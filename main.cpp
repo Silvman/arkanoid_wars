@@ -3,6 +3,7 @@
 
 int main()
 {
+    //Ctht;
     // Создаем главное окно приложения
     sf::RenderWindow window(sf::VideoMode(800, 600), "Arcanoid!");
 
