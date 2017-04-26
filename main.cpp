@@ -1,5 +1,7 @@
 #include <SFML/Graphics.hpp>
 
+/* Отдельный класс мир( персонаж, мячик, массив блоков)
+ */
 
 int main()
 {
@@ -13,7 +15,18 @@ int main()
 
     window.setVerticalSyncEnabled(true);
 
-    sf::RectangleShape rectangle;
+	sf::RectangleShape block1;
+	block1.setSize(sf::Vector2f(20, 20));
+	block1.setOrigin(20, 20);
+	block1.setPosition(125, 100);
+
+	sf::RectangleShape block;
+	block.setSize(sf::Vector2f(20, 20));
+	block.setOrigin(0,0);
+	block.setPosition(0,0);
+
+
+	sf::RectangleShape rectangle;
     rectangle.setSize(sf::Vector2f(100, 10));
     rectangle.setOrigin(50, 5);
     rectangle.setPosition(400, 580);
@@ -53,7 +66,6 @@ int main()
              sf::Vector2f move(time * 0.3, 0);
              rectangle.setPosition(rectangle.getPosition() + move);
          }
-
          if(rectangle.getPosition().x < left_border) {
              rectangle.setPosition(left_border, 580);
          }
@@ -64,8 +76,10 @@ int main()
         }
 
         window.draw(rectangle);
+		window.draw(block);
 
-        // Отрисовка
+		window.draw(block1);
+		// Отрисовка
         window.display();
     }
 
