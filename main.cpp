@@ -153,6 +153,11 @@ public:
     ~ball_body() {}
 };
 
+class test2 {
+private:
+	int zzzz;
+};
+
 class test1 {
 private:
     int lala;
