@@ -153,6 +153,11 @@ public:
     ~ball_body() {}
 };
 
+class test1 {
+private:
+    int lala;
+};
+
 /*
 class physics_world {
 private:
