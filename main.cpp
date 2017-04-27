@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <arpa/nameser.h>
 
 /* Отдельный класс мир( персонаж, мячик, массив блоков)
  */
@@ -11,24 +12,25 @@ private:
     int score, lives;
 
 public:
-    player(const float x_start) : x(x_start), speed(0.3), score(0), lives(2) { }
+    player(const float x_start) : x(x_start), speed(0.3), score(0), lives(3) { }
 
     const float move(float dx) {
         x += dx;
         return x;
     }
 
-    const float getX() {
+    const float getX() const {
         return x;
     }
 
-    const float getSpeed() {
+    const float getSpeed() const {
         return speed;
     }
 
     void setScore(const int new_score) {
         score = new_score;
     }
+
 
     int getScore() const {
         return score;
@@ -49,16 +51,13 @@ public:
     ~player() {}
 };
 
-// класс Тело игрока (для физической и графической сцен)
+// класс Тело игрока (ТОЛЬКО графической сцен) // Для физики надо длеать на объекте движка box2d
 class player_body {
 private:
     sf::RectangleShape body;
 
 public:
-    player_body(
-            const float x_start, const float y_start,
-            const float height, const float width
-    ) {
+    player_body(const float x_start, const float y_start, const float height, const float width) {
         sf::Vector2f size(height, width);
 
         body.setPosition(x_start, y_start);
@@ -84,7 +83,7 @@ private:
     sf::Vector2f speed;
 
 public:
-    // ХАРДКОД!
+
     ball(const float start_x, const float start_y) : position(start_x, start_y), speed(0.5, 0.5) { }
 
     const sf::Vector2f getPosition() const {
@@ -108,6 +107,24 @@ public:
     }
 
     ~ball() { }
+};
+
+class block_body {
+
+private:
+		sf::RectangleShape body;
+public:
+	block_body(const float x_start, const float y_start, const float height, const float width, const float angle = 0) {
+		sf::Vector2f size(height, width);
+
+		body.setPosition(x_start, y_start);
+		body.setSize(size);
+		body.setOrigin(height/2, width/2); // хардкод?
+		body.setRotation(angle);
+	}
+	// как удалять блоки
+	~block_body(){};
+
 };
 
 class ball_body {
@@ -162,6 +179,8 @@ public:
     ~physics_world() {}
 };*/
 
+// в Мире должны быть классы только для мира + time . Обработка events в world
+
 class world {
 private:
     player f_player;
@@ -199,7 +218,7 @@ public:
 int main()
 {
     // Создаем главное окно приложения
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Arcanoid!");
+    sf::RenderWindow window(sf::VideoMode::getDesktopMode(), "Arcanoid!", sf::Style::Fullscreen);
 
     sf::Clock clock;
     float time;
@@ -220,7 +239,7 @@ int main()
 	sf::RectangleShape rectangle;
     rectangle.setSize(sf::Vector2f(100, 10));
     rectangle.setOrigin(50, 5);
-    rectangle.setPosition(400, 580);
+    rectangle.setPosition(0, 0);
 
     // Главный цикл приложения
     while(window.isOpen())
@@ -240,9 +259,8 @@ int main()
         time = clock.getElapsedTime().asMilliseconds();
         clock.restart();
         // Тут будут вызываться функции обновления и отрисовки объектов
-
         const float left_border(70);
-        const float right_border(730);
+        const float right_border(window.getSize().x - 70);
 
          if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
          {
