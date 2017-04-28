@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-#include <arpa/nameser.h>
+#include <Box2D/Box2D.h>
 
 /* Отдельный класс мир( персонаж, мячик, массив блоков)
  */
@@ -153,16 +153,6 @@ public:
     ~ball_body() {}
 };
 
-class test2 {
-private:
-	int zzzz;
-};
-
-class test1 {
-private:
-    int lala;
-};
-
 /*
 class physics_world {
 private:
@@ -228,7 +218,31 @@ public:
 int main()
 {
     // Создаем главное окно приложения
-    sf::RenderWindow window(sf::VideoMode::getDesktopMode(), "Arcanoid!", sf::Style::Fullscreen);
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Arcanoid!");
+
+    b2Vec2 gravity(10.0f, 0.0f);
+    b2World world_ph(gravity);
+
+    b2BodyDef left_border_def;
+    left_border_def.position.Set(0, 300.0f);
+    b2Body* left_border_Body = world_ph.CreateBody(&left_border_def);
+    b2PolygonShape left_border_b;
+    left_border_b.SetAsBox(10.0f, 300.0f);
+    left_border_Body ->CreateFixture(&left_border_b, 0.0f);
+
+    b2BodyDef right_border_def;
+    left_border_def.position.Set(800, 300.0f);
+    b2Body* right_border_Body = world_ph.CreateBody(&right_border_def);
+    b2PolygonShape right_border_b;
+    right_border_b.SetAsBox(10.0f, 300.0f);
+    right_border_Body ->CreateFixture(&right_border_b, 0.0f);
+
+    b2BodyDef top_border_def;
+    top_border_def.position.Set(400, 0);
+    b2Body* top_border_Body = world_ph.CreateBody(&top_border_def);
+    b2PolygonShape top_border_b;
+    top_border_b.SetAsBox(400, 10);
+    top_border_Body ->CreateFixture(&top_border_b, 0.0f);
 
     sf::Clock clock;
     float time;
@@ -249,7 +263,47 @@ int main()
 	sf::RectangleShape rectangle;
     rectangle.setSize(sf::Vector2f(100, 10));
     rectangle.setOrigin(50, 5);
-    rectangle.setPosition(0, 0);
+    rectangle.setPosition(window.getSize().x / 2, window.getSize().y - 20);
+
+    sf::CircleShape ball;
+    ball.setRadius(10);
+    ball.setOrigin(5, 5);
+    ball.setPosition(window.getSize().x / 2, window.getSize().y - 40);
+    bool is_launched = false;
+    const float left_border(70);
+    const float right_border(window.getSize().x - 70);
+    const float top_border(70);
+    //sf::Vector2f ball_speed(0.5, -0.5);
+
+    b2BodyDef bodyDef;
+    bodyDef.type = b2_dynamicBody;
+    bodyDef.position.Set(window.getSize().x / 2,  window.getSize().y - 40);
+    b2Body* body = world_ph.CreateBody(&bodyDef);
+
+    // Define another box shape for our dynamic body.
+    b2CircleShape ball_ph;
+    b2Vec2 ball_speed(30, -30);
+    ball_ph.m_radius = 10;
+
+    // Define the dynamic body fixture.
+    b2FixtureDef fixtureDef;
+    fixtureDef.shape = &ball_ph;
+
+    // Set the box density to be non-zero, so it will be dynamic.
+    fixtureDef.density = 0.1f;
+
+    // Override the default friction.
+    fixtureDef.friction = 0.0f;
+
+    // Add the shape to the body.
+    body->CreateFixture(&fixtureDef);
+
+    // Prepare for simulation. Typically we use a time step of 1/60 of a
+    // second (60Hz) and 10 iterations. This provides a high quality simulation
+    // in most game scenarios.
+    int32 velocityIterations = 6;
+    int32 positionIterations = 2;
+
 
     // Главный цикл приложения
     while(window.isOpen())
@@ -269,8 +323,6 @@ int main()
         time = clock.getElapsedTime().asMilliseconds();
         clock.restart();
         // Тут будут вызываться функции обновления и отрисовки объектов
-        const float left_border(70);
-        const float right_border(window.getSize().x - 70);
 
          if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
          {
@@ -285,6 +337,22 @@ int main()
              sf::Vector2f move(time * 0.3, 0);
              rectangle.setPosition(rectangle.getPosition() + move);
          }
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && !is_launched)
+        {
+            is_launched = true;
+            body->SetLinearVelocity(ball_speed);
+        }
+
+        world_ph.Step(time, velocityIterations, positionIterations);
+        body->SetLinearVelocity(body->GetLinearVelocity() + b2Vec2(ball_speed.x * time, ball_speed.y * time));
+
+        if(is_launched) {
+            b2Vec2 pos = body->GetPosition();
+            ball.setPosition(pos.x, pos.y);
+        }
+
+
          if(rectangle.getPosition().x < left_border) {
              rectangle.setPosition(left_border, 580);
          }
@@ -293,9 +361,26 @@ int main()
         if(rectangle.getPosition().x > right_border) {
             rectangle.setPosition(right_border, 580);
         }
+/*
+        if(ball.getPosition().x > right_border) {
+            ball_speed.x = -ball_speed.x;
+        }
 
+        if(ball.getPosition().y < top_border) {
+            ball_speed.y = -ball_speed.y;
+        }
+
+        if(ball.getPosition().x < left_border) {
+            ball_speed.x = -ball_speed.x;
+        }
+
+        if(ball.getPosition().y + 5 == rectangle.getPosition().y - 5) {
+            ball_speed.y = -ball_speed.y;
+        }
+*/
         window.draw(rectangle);
-		window.draw(block);
+        window.draw(block);
+        window.draw(ball);
 
 		window.draw(block1);
 		// Отрисовка
