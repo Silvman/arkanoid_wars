@@ -1,6 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <Box2D/Box2D.h>
-// #include <iostream>
+#include <iostream>
+
+#define PTM 30.0f
 
 /*
  * TODO : в целом
@@ -108,8 +110,8 @@ private:
 public:
     physics_scene()
             : world(b2Vec2(0.0f, 0.0f)),
-              ball_speed(b2Vec2(20000.0f, -20000.0f)),
-              player_speed(b2Vec2(3, 0.0f)),
+              ball_speed(b2Vec2(10.0f, -10.0f)),
+              player_speed(b2Vec2(9, 0.0f)),
               is_launched(false) {
 
         // creating borders
@@ -117,17 +119,17 @@ public:
         b2BodyDef border_def;
         b2PolygonShape border_shape;
 
-        border_def.position.Set(790.0f, 300.0f); // resolution
-        border_shape.SetAsBox(10.0f, 300.0f);
+        border_def.position.Set(790.0f/PTM, 300.0f/PTM); // resolution
+        border_shape.SetAsBox(10.0f/PTM, 300.0f/PTM);
         borders[0] = world.CreateBody(&border_def);
         borders[0]->CreateFixture(&border_shape, 0.0f);
 
-        border_def.position.Set(0.0f, 300.0f); // resolution
+        border_def.position.Set(0.0f/PTM, 300.0f/PTM); // resolution
         borders[1] = world.CreateBody(&border_def);
         borders[1]->CreateFixture(&border_shape, 0.0f);
 
-        border_def.position.Set(400.0f, 0);
-        border_shape.SetAsBox(400.0f, 10.0f);
+        border_def.position.Set(400.0f/PTM, 0/PTM);
+        border_shape.SetAsBox(400.0f/PTM, 10.0f/PTM);
         borders[2] = world.CreateBody(&border_def);
         borders[2]->CreateFixture(&border_shape, 0.0f);
 
@@ -136,16 +138,16 @@ public:
 
         b2BodyDef ball_def;
         ball_def.type = b2_dynamicBody;
-        ball_def.position.Set(400.0f, 530.0f);
+        ball_def.position.Set(400.0f/PTM, 555.0f/PTM);
         ball = world.CreateBody(&ball_def);
 
         b2CircleShape ball_shape;
-        ball_shape.m_radius = 10;
+        ball_shape.m_radius = 10/PTM;
 
         b2FixtureDef ball_fixture_def;
         ball_fixture_def.shape = &ball_shape;
         ball_fixture_def.density = 10.1f;
-        ball_fixture_def.restitution = 1;
+        ball_fixture_def.restitution = 2;
         ball_fixture_def.friction = 0.0f;
 
         ball->CreateFixture(&ball_fixture_def);
@@ -155,11 +157,11 @@ public:
 
         b2BodyDef player_def;
         player_def.type = b2_dynamicBody;
-        player_def.position.Set(400.0f, 560.0f);
+        player_def.position.Set(400.0f/PTM, 580.0f/PTM);
         player = world.CreateBody(&player_def);
 
         b2PolygonShape player_shape;
-        player_shape.SetAsBox(50.0f, 5.0f);
+        player_shape.SetAsBox(50.0f/PTM, 5.0f/PTM);
 
         b2FixtureDef player_fixture_def;
         player_fixture_def.shape = &player_shape;
@@ -171,19 +173,49 @@ public:
 
     }
 
-    void calculate(float dt) {
+    void calculate(float dt, bool ball_lost) {
         // TODO : при переносе на сервер - заменить sf::keyboard на данные от клиента
 
+        if(ball_lost) {
+            is_launched = false;
+            world.DestroyBody(ball);
+
+            b2BodyDef ball_def;
+            ball_def.type = b2_dynamicBody;
+            ball_def.position.Set(player->GetPosition().x, player->GetPosition().y - 25/PTM);
+            ball = world.CreateBody(&ball_def);
+
+            b2CircleShape ball_shape;
+            ball_shape.m_radius = 10/PTM;
+
+            b2FixtureDef ball_fixture_def;
+            ball_fixture_def.shape = &ball_shape;
+            ball_fixture_def.density = 10.1f;
+            ball_fixture_def.restitution = 2;
+            ball_fixture_def.friction = 0.0f;
+
+            ball->CreateFixture(&ball_fixture_def);
+        }
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            player->SetLinearVelocity(b2Vec2(-100, 0));
+            player->SetLinearVelocity(-player_speed);
+            if(!is_launched) {
+                ball->SetLinearVelocity(-player_speed);
+            }
         }
 
         if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            player->SetLinearVelocity(b2Vec2(0,0));
+            player->SetLinearVelocity(b2Vec2(0, 0));
+            if(!is_launched) {
+                ball->SetLinearVelocity(b2Vec2(0, 0));
+            }
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            player->SetLinearVelocity(b2Vec2(100, 0));
+            player->SetLinearVelocity(player_speed);
+            if(!is_launched) {
+                ball->SetLinearVelocity(player_speed);
+            }
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && !is_launched) {
@@ -192,17 +224,17 @@ public:
         }
 
         world.Step(dt, velocityIterations, positionIterations);
-        // std::cout << dt << std::endl;
+        std::cout << dt << " " << ball->GetLinearVelocity().x << std::endl;
     }
 
     const sf::Vector2f givePlayerCoords() const {
         b2Vec2 b2_coords = player->GetPosition();
-        return sf::Vector2f(b2_coords.x, b2_coords.y);
+        return sf::Vector2f(b2_coords.x * PTM, b2_coords.y * PTM);
     }
 
     const sf::Vector2f giveBallCoords() const {
         b2Vec2 b2_coords = ball->GetPosition();
-        return sf::Vector2f(b2_coords.x, b2_coords.y);
+        return sf::Vector2f(b2_coords.x * PTM, b2_coords.y * PTM);
     }
 
     ~physics_scene() { }
@@ -273,6 +305,8 @@ private:
     logic_player player;
     logic_ball ball;
 
+    bool ball_lost;
+
     physics_scene physics;
     graphics_scene graphics;
 
@@ -286,7 +320,8 @@ public:
     logic_world(sf::RenderWindow& window, const float x_start, const float y_start)
             : player(x_start),
               ball(x_start, y_start + 10),
-              graphics(window) { }
+              graphics(window),
+              ball_lost(false) { }
 
     void update() {
         time = clock.getElapsedTime().asSeconds();
@@ -295,6 +330,7 @@ public:
         // шарик ушел за пределы поля
         if(ball.getPosition().y > bottom_border) {
             player.setLives(player.getLives() - 1);
+            ball_lost = true;
         }
 
         // жизней меньше нуля
@@ -306,7 +342,8 @@ public:
          * Тут должен располагаться цикл, в котором будем проверять, не сбили ли какой-то блок
          */
 
-        physics.calculate(time);
+        physics.calculate(time, ball_lost);
+        ball_lost = false;
 
         player.setPosition(physics.givePlayerCoords());
         ball.setPosition(physics.giveBallCoords());
