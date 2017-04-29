@@ -4,11 +4,15 @@
 
 #define PTM 30.0f
 
+
+
 /*
  * TODO : в целом
  *
- * Убрать хардкод! Пусть все константы определяются в logic_scene, а остальное от них зависит
- * Сделать по ООП-шному в каждом классе; разнести по player, ball и т.д. (как в logic_scene)
+ * (+/-) Убрать хардкод! Пусть все константы определяются в logic_scene, а остальное от них зависит
+ * (+, но есть костыли) Сделать по ООП-шному в каждом классе; разнести по player, ball и т.д. (как в logic_scene)
+ *
+ * (+) Перенести обработку клавиатуры из физики в logic
  *
  * Сделать массив блоков
  * Сделать удара шарика о блок
@@ -26,24 +30,6 @@
 
 // графическая сцена
 
-// пока незаюзано, но будет :)
-class block_body {
-private:
-    sf::RectangleShape body;
-public:
-    block_body(const float x_start, const float y_start, const float height, const float width, const float angle = 0) {
-        sf::Vector2f size(height, width);
-
-        body.setPosition(x_start, y_start);
-        body.setSize(size);
-        body.setOrigin(height/2, width/2); // хардкод?
-        body.setRotation(angle);
-    }
-    // как удалять блоки
-    ~block_body(){};
-
-};
-
 class graphics_scene {
 private:
     sf::RenderWindow& window;
@@ -52,13 +38,31 @@ private:
     sf::CircleShape ball;
     // block_body* blocks;
 
+    class block_body {
+    private:
+        sf::RectangleShape body;
+    public:
+        block_body(const float x_start, const float y_start, const float height, const float width, const float angle = 0) {
+            sf::Vector2f size(height, width);
+
+            body.setPosition(x_start, y_start);
+            body.setSize(size);
+            body.setOrigin(height/2, width/2); // хардкод?
+            body.setRotation(angle);
+        }
+        // как удалять блоки
+        ~block_body(){};
+
+    };
+
+
 public:
     graphics_scene(sf::RenderWindow& window) : window(window) {
-        player.setPosition(400, 580);
+        player.setPosition(window.getSize().x / 2, window.getSize().y - 20);
         player.setSize(sf::Vector2f(100, 10));
         player.setOrigin(50, 5); // хардкод
 
-        ball.setPosition(400, 570);
+        ball.setPosition(window.getSize().x / 2, window.getSize().y - 30);
         ball.setRadius(10);
     }
 
@@ -78,12 +82,11 @@ public:
     ~graphics_scene() {}
 };
 
-
 /*
  * TODO : физика
  *
- * Сделать так, чтобы платформа двигалась только вдоль x (сейчас может дергаться)
- * Сделать так, чтобы скорость шарика не падала
+ * (+) Сделать так, чтобы платформа двигалась только вдоль x (сейчас может дергаться)
+ * (+) Сделать так, чтобы скорость шарика не падала
  *
  */
 
@@ -92,149 +95,239 @@ class physics_scene {
 private:
     b2World world;
 
-    b2Body* ball;
-    b2Vec2 ball_speed;
+    class physic_ball {
+        private:
+            b2World& world;
+            b2Body* ball;
+            b2Vec2 ball_speed;
+            b2Joint* joint;
+    
+        public:
+            physic_ball(b2World& world, const float play_pos_x, const float play_pos_y, const b2Vec2& speed) : world(world), ball_speed(speed) {
+                b2BodyDef ball_def;
+                ball_def.type = b2_dynamicBody;
+                ball_def.position.Set(play_pos_x / PTM, (play_pos_y - 25) / PTM);
+                ball = world.CreateBody(&ball_def);
+    
+                b2CircleShape ball_shape;
+                ball_shape.m_radius = 10/PTM;
+    
+                b2FixtureDef ball_fixture_def;
+                ball_fixture_def.shape = &ball_shape;
+                ball_fixture_def.density = 10.1f;
+                ball_fixture_def.restitution = 1.05f;
+                ball_fixture_def.friction = 0.0f;
+    
+                ball->CreateFixture(&ball_fixture_def);
+            }
+
+            physic_ball& operator = (const physic_ball& from) {
+                ball = from.ball;
+                // this->ball_speed = ball_speed; // не нужно пока, т.к. под скоростью подразумевается начальная скорость
+            }
+    
+            void restart(const b2Vec2& player_position) {
+                world.DestroyBody(ball);
+                //копипаст! D:
+                b2BodyDef ball_def;
+                ball_def.type = b2_dynamicBody;
+                ball_def.position.Set(player_position.x, player_position.y - 25 / PTM); // тут еще остается ptm TODO
+                ball = world.CreateBody(&ball_def);
+
+                b2CircleShape ball_shape;
+                ball_shape.m_radius = 10/PTM;
+
+                b2FixtureDef ball_fixture_def;
+                ball_fixture_def.shape = &ball_shape;
+                ball_fixture_def.density = 10.1f;
+                ball_fixture_def.restitution = 1.05f;
+                ball_fixture_def.friction = 0.0f;
+
+                ball->CreateFixture(&ball_fixture_def);
+            }
+            
+            void lauch() {
+                std::cout << ball << std::endl;
+                ball->SetLinearVelocity(ball_speed);
+            }
+
+            void move_with_player(const b2Vec2& speed, char dest) {
+                switch (dest) {
+                    case 'r': {
+                        ball->SetLinearVelocity(speed);
+                        break;
+                    }
+
+                    case 'l': {
+                        ball->SetLinearVelocity(-speed);
+                        break;
+                    }
+
+                    default: {
+                        ball->SetLinearVelocity(b2Vec2(0,0));
+                        break;
+                    }
+                }
+            }
+
+            const b2Vec2 giveCoords() const {
+                return ball->GetPosition();
+            }
+            
+            ~physic_ball() { world.DestroyBody(ball); }
+    };
+    
+    class physic_player {
+        private:
+            b2World& world;
+            // указатели юзаем из-за особенностей либы (методы World принимают в качестве аргументов указатели и ничего больше)
+            b2Body* player;
+            b2Vec2 player_speed;
+
+        public:
+            physic_player(b2World& world, const float start_x, const float start_y, const b2Vec2& speed) : world(world), player_speed(speed) {
+                b2BodyDef player_def;
+                player_def.type = b2_kinematicBody;
+                player_def.position.Set(start_x / PTM, start_y / PTM);
+                player = world.CreateBody(&player_def);
+
+                b2PolygonShape player_shape;
+                player_shape.SetAsBox(50.0f/PTM, 5.0f/PTM);
+
+                b2FixtureDef player_fixture_def;
+                player_fixture_def.shape = &player_shape;
+                player_fixture_def.density = 10.1f;
+                player_fixture_def.restitution = 1;
+                player_fixture_def.friction = 0.0f;
+
+                player->CreateFixture(&player_fixture_def);
+            }
+
+            void stop() {
+                player->SetLinearVelocity(b2Vec2(0,0));
+            }
+
+            void move(char dest) {
+                switch (dest) {
+                    case 'r': {
+                        player->SetLinearVelocity(player_speed);
+                        break;
+                    }
+
+                    case 'l': {
+                        player->SetLinearVelocity(-player_speed);
+                        break;
+                    }
+
+                    default: {
+                        stop();
+                        break;
+                    }
+                }
+            }
+
+            const b2Vec2& getSpeed() const {
+                return player_speed;
+            }
+
+            const b2Vec2 giveCoords() const {
+                return player->GetPosition();
+            }
+
+            ~physic_player() { world.DestroyBody(player); }
+    };
+
+    class physic_border {
+        private:
+            b2World& world;
+            b2Body* border;
+
+        public:
+
+            physic_border(b2World& world, const float pos_x, const float pos_y, const float size_x, const float size_y) : world(world) {
+                b2BodyDef border_def;
+                b2PolygonShape border_shape;
+
+                border_def.position.Set(pos_x/PTM, pos_y/PTM);
+                border_shape.SetAsBox(size_x/PTM, size_y/PTM);
+                border = world.CreateBody(&border_def);
+                border->CreateFixture(&border_shape, 0.0f);
+            }
+
+            ~physic_border() { world.DestroyBody(border); }
+
+    };
+
+    physic_ball ball;
+
+    physic_player player;
+
+    physic_border right_border;
+
+    physic_border left_border;
+
+    physic_border top_border;
+
     bool is_launched;
 
-    b2Body* player;
-    b2Vec2 player_speed;
-
-
-    b2Body* borders[3];
     // b2Body** blocks;
 
     int32 velocityIterations = 8;
     int32 positionIterations = 3;
 
-
 public:
-    physics_scene()
+    physics_scene(const sf::RenderWindow& window)
             : world(b2Vec2(0.0f, 0.0f)),
-              ball_speed(b2Vec2(10.0f, -10.0f)),
-              player_speed(b2Vec2(9, 0.0f)),
-              is_launched(false) {
+              ball(world, (window.getSize().x / 2), (window.getSize().y - 35), b2Vec2(9.0f, -9.0f)),
+              player(world, (window.getSize().x / 2), (window.getSize().y - 35), b2Vec2(9, 0.0f)),
+              right_border(world, (window.getSize().x - 10), (window.getSize().y / 2), 10.0f, window.getSize().y / 2),
+              left_border(world, 0.0f, (window.getSize().y / 2), 10.0f, window.getSize().y / 2),
+              top_border(world, (window.getSize().x / 2), 0.0f, (window.getSize().x / 2), 10.0f),
+              is_launched(false) { }
 
-        // creating borders
-
-        b2BodyDef border_def;
-        b2PolygonShape border_shape;
-
-        border_def.position.Set(790.0f/PTM, 300.0f/PTM); // resolution
-        border_shape.SetAsBox(10.0f/PTM, 300.0f/PTM);
-        borders[0] = world.CreateBody(&border_def);
-        borders[0]->CreateFixture(&border_shape, 0.0f);
-
-        border_def.position.Set(0.0f/PTM, 300.0f/PTM); // resolution
-        borders[1] = world.CreateBody(&border_def);
-        borders[1]->CreateFixture(&border_shape, 0.0f);
-
-        border_def.position.Set(400.0f/PTM, 0/PTM);
-        border_shape.SetAsBox(400.0f/PTM, 10.0f/PTM);
-        borders[2] = world.CreateBody(&border_def);
-        borders[2]->CreateFixture(&border_shape, 0.0f);
-
-
-        // creating ball
-
-        b2BodyDef ball_def;
-        ball_def.type = b2_dynamicBody;
-        ball_def.position.Set(400.0f/PTM, 555.0f/PTM);
-        ball = world.CreateBody(&ball_def);
-
-        b2CircleShape ball_shape;
-        ball_shape.m_radius = 10/PTM;
-
-        b2FixtureDef ball_fixture_def;
-        ball_fixture_def.shape = &ball_shape;
-        ball_fixture_def.density = 10.1f;
-        ball_fixture_def.restitution = 2;
-        ball_fixture_def.friction = 0.0f;
-
-        ball->CreateFixture(&ball_fixture_def);
-
-
-        // creating player
-
-        b2BodyDef player_def;
-        player_def.type = b2_dynamicBody;
-        player_def.position.Set(400.0f/PTM, 580.0f/PTM);
-        player = world.CreateBody(&player_def);
-
-        b2PolygonShape player_shape;
-        player_shape.SetAsBox(50.0f/PTM, 5.0f/PTM);
-
-        b2FixtureDef player_fixture_def;
-        player_fixture_def.shape = &player_shape;
-        player_fixture_def.density = 10.1f;
-        player_fixture_def.restitution = 1;
-        player_fixture_def.friction = 0.0f;
-
-        player->CreateFixture(&player_fixture_def);
-
-    }
-
-    void calculate(float dt, bool ball_lost) {
+    void calculate(float dt, char key, bool ball_lost) {
         // TODO : при переносе на сервер - заменить sf::keyboard на данные от клиента
 
         if(ball_lost) {
             is_launched = false;
-            world.DestroyBody(ball);
-
-            b2BodyDef ball_def;
-            ball_def.type = b2_dynamicBody;
-            ball_def.position.Set(player->GetPosition().x, player->GetPosition().y - 25/PTM);
-            ball = world.CreateBody(&ball_def);
-
-            b2CircleShape ball_shape;
-            ball_shape.m_radius = 10/PTM;
-
-            b2FixtureDef ball_fixture_def;
-            ball_fixture_def.shape = &ball_shape;
-            ball_fixture_def.density = 10.1f;
-            ball_fixture_def.restitution = 2;
-            ball_fixture_def.friction = 0.0f;
-
-            ball->CreateFixture(&ball_fixture_def);
+            ball.restart(player.giveCoords());
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            player->SetLinearVelocity(-player_speed);
-            if(!is_launched) {
-                ball->SetLinearVelocity(-player_speed);
+        switch (key) {
+            case 'l':
+            case 'r': {
+                player.move(key);
+                if(!is_launched)
+                    ball.move_with_player(player.getSpeed(), key);
+                break;
             }
-        }
 
-        if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            player->SetLinearVelocity(b2Vec2(0, 0));
-            if(!is_launched) {
-                ball->SetLinearVelocity(b2Vec2(0, 0));
+            case 'u': {
+                if(!is_launched) {
+                    is_launched = true;
+                    ball.lauch();
+                }
             }
-        }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            player->SetLinearVelocity(player_speed);
-            if(!is_launched) {
-                ball->SetLinearVelocity(player_speed);
+            default: {
+                player.stop();
+                if(!is_launched)
+                    ball.move_with_player(player.getSpeed(), ' ');
             }
-        }
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && !is_launched) {
-            is_launched = true;
-            ball->SetLinearVelocity(ball_speed);
         }
 
         world.Step(dt, velocityIterations, positionIterations);
-        std::cout << dt << " " << ball->GetLinearVelocity().x << std::endl;
+        //std::cout << dt << " " << ball->GetLinearVelocity().x << std::endl;
     }
 
     const sf::Vector2f givePlayerCoords() const {
-        b2Vec2 b2_coords = player->GetPosition();
-        return sf::Vector2f(b2_coords.x * PTM, b2_coords.y * PTM);
+        b2Vec2 coords = player.giveCoords();
+        return sf::Vector2f(coords.x * PTM, coords.y * PTM);
     }
 
     const sf::Vector2f giveBallCoords() const {
-        b2Vec2 b2_coords = ball->GetPosition();
-        return sf::Vector2f(b2_coords.x * PTM, b2_coords.y * PTM);
+        b2Vec2 coords = ball.giveCoords();
+        return sf::Vector2f(coords.x * PTM, coords.y * PTM);
     }
 
     ~physics_scene() { }
@@ -242,66 +335,68 @@ public:
 
 
 // класс Игрок (для основной сцены)
-class logic_player {
-private:
-    sf::Vector2f position;
-    int score, lives;
-
-public:
-    logic_player(const float x_start = 580, const float y_start = 400) : position(x_start, y_start), score(0), lives(3) { }
-
-    void setPosition(sf::Vector2f new_position) {
-        position = new_position;
-    }
-
-    const sf::Vector2f getPosition() const {
-        return position;
-    }
-
-    void setScore(const int new_score) {
-        score = new_score;
-    }
-
-    int getScore() const {
-        return score;
-    }
-
-    void setLives(const int new_lives) {
-        lives = new_lives;
-    }
-
-    int getLives() const {
-        return lives;
-    }
-
-    void operator ++ () {
-        score++;
-    }
-
-    ~logic_player() {}
-};
-
-class logic_ball {
-private:
-    sf::Vector2f position;
-
-public:
-
-    logic_ball(const float start_x = 570, const float start_y = 400) : position(start_x, start_y) { }
-
-    void setPosition(sf::Vector2f new_position) {
-        position = new_position;
-    }
-
-    const sf::Vector2f getPosition() const {
-        return position;
-    }
-
-    ~logic_ball() { }
-};
 
 class logic_world {
 private:
+
+    class logic_player {
+    private:
+        sf::Vector2f position;
+        int score, lives;
+
+    public:
+        logic_player(const float x_start = 580, const float y_start = 400) : position(x_start, y_start), score(0), lives(3) { }
+
+        void setPosition(sf::Vector2f new_position) {
+            position = new_position;
+        }
+
+        const sf::Vector2f getPosition() const {
+            return position;
+        }
+
+        void setScore(const int new_score) {
+            score = new_score;
+        }
+
+        int getScore() const {
+            return score;
+        }
+
+        void setLives(const int new_lives) {
+            lives = new_lives;
+        }
+
+        int getLives() const {
+            return lives;
+        }
+
+        void operator ++ () {
+            score++;
+        }
+
+        ~logic_player() {}
+    };
+
+    class logic_ball {
+    private:
+        sf::Vector2f position;
+
+    public:
+
+        logic_ball(const float start_x = 570, const float start_y = 400) : position(start_x, start_y) { }
+
+        void setPosition(sf::Vector2f new_position) {
+            position = new_position;
+        }
+
+        const sf::Vector2f getPosition() const {
+            return position;
+        }
+
+        ~logic_ball() { }
+    };
+
     logic_player player;
     logic_ball ball;
 
@@ -313,15 +408,17 @@ private:
     sf::Clock clock;
     float time;
 
-    const float bottom_border = 600;
+    const float bottom_border;
 
 
 public:
-    logic_world(sf::RenderWindow& window, const float x_start, const float y_start)
-            : player(x_start),
-              ball(x_start, y_start + 10),
+    logic_world(sf::RenderWindow& window)
+            : player(window.getSize().x / 2.0f),
+              ball(window.getSize().x / 2.0f, window.getSize().y - 35.0f),
               graphics(window),
-              ball_lost(false) { }
+              physics(window),
+              ball_lost(false),
+              bottom_border(window.getSize().y) { }
 
     void update() {
         time = clock.getElapsedTime().asSeconds();
@@ -342,7 +439,21 @@ public:
          * Тут должен располагаться цикл, в котором будем проверять, не сбили ли какой-то блок
          */
 
-        physics.calculate(time, ball_lost);
+        char key;
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            key = 'l';
+
+        if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            key = ' ';
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+            key = 'r';
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+            key = 'u';
+
+        physics.calculate(time, key, ball_lost);
         ball_lost = false;
 
         player.setPosition(physics.givePlayerCoords());
@@ -358,11 +469,11 @@ public:
 int main()
 {
     // Создаем главное окно приложения
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Arcanoid!");
+    sf::RenderWindow window(sf::VideoMode(1024, 800), "Arcanoid!");
     window.setFramerateLimit(60);
     window.setVerticalSyncEnabled(true);
 
-    logic_world game (window, 580, 400);
+    logic_world game(window);
 
     // Главный цикл приложения
     while(window.isOpen())
