@@ -1,9 +1,19 @@
 #include <SFML/Graphics.hpp>
 #include <Box2D/Box2D.h>
+#include <SFML/Network.hpp>
 #include <iostream>
 
 #define PTM 30.0f
 
+
+
+sf::Packet& operator << (sf::Packet& packet, const sf::Vector2f from) {
+    return packet << from.x << from.y;
+}
+
+sf::Packet& operator >> (sf::Packet& packet, sf::Vector2f to) {
+    return packet >> to.x >> to.y;
+}
 
 
 /*
@@ -27,6 +37,9 @@
  * Сделать графоний и звук
  *
  */
+
+
+/* ------ Клиенская часть ------ */
 
 // графическая сцена
 
@@ -82,15 +95,70 @@ public:
     ~graphics_scene() {}
 };
 
+class client {
+private:
+    char key;
+
+    graphics_scene graphics;
+
+    sf::TcpSocket socket;//программный интерфейс для обеспечения обмена данными между процессами
+    sf::Packet packet;	//Для осуществления пакетной передачи дынных
+
+    sf::Vector2f player_position;
+    sf::Vector2f ball_position;
+
+    /* еще инфа о блоках будет */
+
+public:
+    client(sf::RenderWindow& window, sf::IpAddress ip) : graphics(window), key(' ') {
+        socket.connect(ip, 2000);
+    }
+
+    void run() {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            key = 'l';
+
+        if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            key = ' ';
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+            key = 'r';
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+            key = 'u';
+
+        packet << key;
+        socket.send(packet);
+        packet.clear();
+
+        socket.receive(packet);
+        /*
+         * Структура packet: sf::Vector2f player_position, sf::Vector2f ball_position
+         */
+        if(packet >> player_position >> ball_position) {
+            graphics.draw(player_position, ball_position);
+        }
+
+        sleep(sf::milliseconds(10));
+    }
+
+    ~client() { socket.disconnect(); }
+};
+
+/* ----------------------------- */
+
+
+
+/* ------ Серверная часть ------ */
+
+// физика
 /*
  * TODO : физика
  *
- * (+) Сделать так, чтобы платформа двигалась только вдоль x (сейчас может дергаться)
- * (+) Сделать так, чтобы скорость шарика не падала
+ * Сделать так чтобы платформа упиралась в стенку, а не прходила через нее
+ * Физика столкновения - чтобы кидал флаги об ударенных блоках
  *
  */
-
-// физика
 class physics_scene {
 private:
     b2World world;
@@ -147,7 +215,7 @@ private:
             }
             
             void lauch() {
-                std::cout << ball << std::endl;
+                // std::cout << ball << std::endl;
                 ball->SetLinearVelocity(ball_speed);
             }
 
@@ -275,18 +343,27 @@ private:
     int32 velocityIterations = 8;
     int32 positionIterations = 3;
 
+
+    sf::Clock clock;
+    float dt;
+
+
 public:
     physics_scene(const sf::RenderWindow& window)
             : world(b2Vec2(0.0f, 0.0f)),
               ball(world, (window.getSize().x / 2), (window.getSize().y - 35), b2Vec2(9.0f, -9.0f)),
-              player(world, (window.getSize().x / 2), (window.getSize().y - 35), b2Vec2(9, 0.0f)),
+              player(world, (window.getSize().x / 2), (window.getSize().y - 35), b2Vec2(15, 0.0f)),
               right_border(world, (window.getSize().x - 10), (window.getSize().y / 2), 10.0f, window.getSize().y / 2),
               left_border(world, 0.0f, (window.getSize().y / 2), 10.0f, window.getSize().y / 2),
               top_border(world, (window.getSize().x / 2), 0.0f, (window.getSize().x / 2), 10.0f),
               is_launched(false) { }
 
-    void calculate(float dt, char key, bool ball_lost) {
+    void calculate(char key, bool ball_lost) {
         // TODO : при переносе на сервер - заменить sf::keyboard на данные от клиента
+        dt = clock.getElapsedTime().asSeconds();
+        clock.restart();
+
+        // socket.receive(packet);
 
         if(ball_lost) {
             is_launched = false;
@@ -317,7 +394,7 @@ public:
         }
 
         world.Step(dt, velocityIterations, positionIterations);
-        //std::cout << dt << " " << ball->GetLinearVelocity().x << std::endl;
+        std::cout << dt << std::endl;
     }
 
     const sf::Vector2f givePlayerCoords() const {
@@ -333,9 +410,7 @@ public:
     ~physics_scene() { }
 };
 
-
-// класс Игрок (для основной сцены)
-
+// логика игры
 class logic_world {
 private:
 
@@ -403,10 +478,6 @@ private:
     bool ball_lost;
 
     physics_scene physics;
-    graphics_scene graphics;
-
-    sf::Clock clock;
-    float time;
 
     const float bottom_border;
 
@@ -415,14 +486,11 @@ public:
     logic_world(sf::RenderWindow& window)
             : player(window.getSize().x / 2.0f),
               ball(window.getSize().x / 2.0f, window.getSize().y - 35.0f),
-              graphics(window),
               physics(window),
               ball_lost(false),
               bottom_border(window.getSize().y) { }
 
-    void update() {
-        time = clock.getElapsedTime().asSeconds();
-        clock.restart();
+    void update(char key) {
 
         // шарик ушел за пределы поля
         if(ball.getPosition().y > bottom_border) {
@@ -439,41 +507,42 @@ public:
          * Тут должен располагаться цикл, в котором будем проверять, не сбили ли какой-то блок
          */
 
-        char key;
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            key = 'l';
-
-        if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            key = ' ';
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            key = 'r';
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-            key = 'u';
-
-        physics.calculate(time, key, ball_lost);
+        physics.calculate(key, ball_lost);
         ball_lost = false;
+
 
         player.setPosition(physics.givePlayerCoords());
         ball.setPosition(physics.giveBallCoords());
 
-        graphics.draw(player.getPosition(), ball.getPosition());
+        //graphics.draw(player.getPosition(), ball.getPosition());
+        // вместо этой фигни - отправка новых координат
+
+        sleep(sf::milliseconds(10));
     }
 
     ~logic_world() { }
 };
 
+class server {
+private:
 
-int main()
-{
+public:
+
+};
+
+/* ----------------------------- */
+
+
+
+int main() {
     // Создаем главное окно приложения
     sf::RenderWindow window(sf::VideoMode(1024, 800), "Arcanoid!");
-    window.setFramerateLimit(60);
+    window.setFramerateLimit(50);
     window.setVerticalSyncEnabled(true);
 
-    logic_world game(window);
+    // logic_world game_o(window);
+
+    client game(window, sf::IpAddress("192.168.0.1"));
 
     // Главный цикл приложения
     while(window.isOpen())
@@ -488,7 +557,9 @@ int main()
                 window.close();
         }
 
-        game.update();
+        game.run();
+
+        // game.update();
     }
 
     return 0;
