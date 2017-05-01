@@ -7,13 +7,6 @@
 
 
 
-sf::Packet& operator << (sf::Packet& packet, const sf::Vector2f from) {
-    return packet << from.x << from.y;
-}
-
-sf::Packet& operator >> (sf::Packet& packet, sf::Vector2f to) {
-    return packet >> to.x >> to.y;
-}
 
 
 /*
@@ -97,47 +90,56 @@ public:
 
 class client {
 private:
-    char key;
+    unsigned int key;
 
     graphics_scene graphics;
 
     sf::TcpSocket socket;//программный интерфейс для обеспечения обмена данными между процессами
-    sf::Packet packet;	//Для осуществления пакетной передачи дынных
-
+    sf::Packet INPUT;	//Для осуществления пакетной передачи дынных
+	sf::Packet OUTPUT;
     sf::Vector2f player_position;
     sf::Vector2f ball_position;
+	float x_player, y_player;
+	float x_ball, y_ball;
 
     /* еще инфа о блоках будет */
 
 public:
     client(sf::RenderWindow& window, sf::IpAddress ip) : graphics(window), key(' ') {
-        socket.connect(ip, 2000);
+		socket.connect(ip, 2000);
+		std::cout << "Connected with server" << std::endl;
+
     }
 
-    void run() {
+    void run(sf::RenderWindow& window) {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            key = 'l';
+            key = 1;
 
         if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            key = ' ';
+            key = 0;
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            key = 'r';
+            key = 2;
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-            key = 'u';
+            key = 3;
 
-        packet << key;
-        socket.send(packet);
-        packet.clear();
+		std::cout <<"key : " << key << std::endl;
+		OUTPUT << key;
+        socket.send(OUTPUT);
+		OUTPUT.clear();
 
-        socket.receive(packet);
-        /*
-         * Структура packet: sf::Vector2f player_position, sf::Vector2f ball_position
-         */
-        if(packet >> player_position >> ball_position) {
-            graphics.draw(player_position, ball_position);
-        }
+		int k = 0;
+        socket.receive(INPUT);
+		std::cout << "Packet recieved"<< std::endl;
+
+		INPUT >> x_player >> y_player >> x_ball >> y_ball ;
+		std::cout << "PL: " << x_player<< " : " << y_player <<" Ball: "<< x_ball << " : " << y_ball << std::endl;
+
+		player_position.x = x_player; player_position.y = y_player;
+		ball_position.x = x_ball; ball_position.y = y_ball;
+
+		graphics.draw(player_position, ball_position);
 
         sleep(sf::milliseconds(10));
     }
@@ -169,23 +171,23 @@ private:
             b2Body* ball;
             b2Vec2 ball_speed;
             b2Joint* joint;
-    
+
         public:
             physic_ball(b2World& world, const float play_pos_x, const float play_pos_y, const b2Vec2& speed) : world(world), ball_speed(speed) {
                 b2BodyDef ball_def;
                 ball_def.type = b2_dynamicBody;
                 ball_def.position.Set(play_pos_x / PTM, (play_pos_y - 25) / PTM);
                 ball = world.CreateBody(&ball_def);
-    
+
                 b2CircleShape ball_shape;
                 ball_shape.m_radius = 10/PTM;
-    
+
                 b2FixtureDef ball_fixture_def;
                 ball_fixture_def.shape = &ball_shape;
                 ball_fixture_def.density = 10.1f;
                 ball_fixture_def.restitution = 1.05f;
                 ball_fixture_def.friction = 0.0f;
-    
+
                 ball->CreateFixture(&ball_fixture_def);
             }
 
@@ -193,7 +195,7 @@ private:
                 ball = from.ball;
                 // this->ball_speed = ball_speed; // не нужно пока, т.к. под скоростью подразумевается начальная скорость
             }
-    
+
             void restart(const b2Vec2& player_position) {
                 world.DestroyBody(ball);
                 //копипаст! D:
@@ -213,25 +215,25 @@ private:
 
                 ball->CreateFixture(&ball_fixture_def);
             }
-            
+
             void lauch() {
                 // std::cout << ball << std::endl;
                 ball->SetLinearVelocity(ball_speed);
             }
 
-            void move_with_player(const b2Vec2& speed, char dest) {
+            void move_with_player(const b2Vec2& speed, unsigned int dest) {
                 switch (dest) {
-                    case 'r': {
+                    case 2: {
                         ball->SetLinearVelocity(speed);
                         break;
                     }
 
-                    case 'l': {
+                    case 1: {
                         ball->SetLinearVelocity(-speed);
                         break;
                     }
 
-                    default: {
+                    case 0: {
                         ball->SetLinearVelocity(b2Vec2(0,0));
                         break;
                     }
@@ -241,10 +243,10 @@ private:
             const b2Vec2 giveCoords() const {
                 return ball->GetPosition();
             }
-            
+
             ~physic_ball() { world.DestroyBody(ball); }
     };
-    
+
     class physic_player {
         private:
             b2World& world;
@@ -275,19 +277,19 @@ private:
                 player->SetLinearVelocity(b2Vec2(0,0));
             }
 
-            void move(char dest) {
+            void move(unsigned int dest) {
                 switch (dest) {
-                    case 'r': {
+                    case 2: {
                         player->SetLinearVelocity(player_speed);
                         break;
                     }
 
-                    case 'l': {
+                    case 1: {
                         player->SetLinearVelocity(-player_speed);
                         break;
                     }
 
-                    default: {
+                    case 0: {
                         stop();
                         break;
                     }
@@ -349,16 +351,16 @@ private:
 
 
 public:
-    physics_scene(const sf::RenderWindow& window)
+    physics_scene(const float window_size_x,const float window_size_y)
             : world(b2Vec2(0.0f, 0.0f)),
-              ball(world, (window.getSize().x / 2), (window.getSize().y - 35), b2Vec2(9.0f, -9.0f)),
-              player(world, (window.getSize().x / 2), (window.getSize().y - 35), b2Vec2(15, 0.0f)),
-              right_border(world, (window.getSize().x - 10), (window.getSize().y / 2), 10.0f, window.getSize().y / 2),
-              left_border(world, 0.0f, (window.getSize().y / 2), 10.0f, window.getSize().y / 2),
-              top_border(world, (window.getSize().x / 2), 0.0f, (window.getSize().x / 2), 10.0f),
+              ball(world, (window_size_x/ 2), (window_size_y - 35), b2Vec2(9.0f, -9.0f)),
+              player(world, (window_size_x / 2), (window_size_y - 35), b2Vec2(15, 0.0f)),
+              right_border(world, (window_size_x - 10), (window_size_y / 2), 10.0f, window_size_y / 2),
+              left_border(world, 0.0f, (window_size_y / 2), 10.0f, window_size_y / 2),
+              top_border(world, (window_size_x / 2), 0.0f, (window_size_x / 2), 10.0f),
               is_launched(false) { }
 
-    void calculate(char key, bool ball_lost) {
+    void calculate(unsigned int key, bool ball_lost) {
         // TODO : при переносе на сервер - заменить sf::keyboard на данные от клиента
         dt = clock.getElapsedTime().asSeconds();
         clock.restart();
@@ -371,25 +373,25 @@ public:
         }
 
         switch (key) {
-            case 'l':
-            case 'r': {
+            case 1:
+            case 2: {
                 player.move(key);
                 if(!is_launched)
                     ball.move_with_player(player.getSpeed(), key);
                 break;
             }
 
-            case 'u': {
+            case 3: {
                 if(!is_launched) {
                     is_launched = true;
                     ball.lauch();
                 }
             }
 
-            default: {
+            case 0: {
                 player.stop();
                 if(!is_launched)
-                    ball.move_with_player(player.getSpeed(), ' ');
+                    ball.move_with_player(player.getSpeed(), 0);
             }
         }
 
@@ -483,14 +485,14 @@ private:
 
 
 public:
-    logic_world(sf::RenderWindow& window)
-            : player(window.getSize().x / 2.0f),
-              ball(window.getSize().x / 2.0f, window.getSize().y - 35.0f),
-              physics(window),
+    logic_world(const float window_size_x,const float window_size_y)
+            : player(window_size_x / 2.0f),
+              ball(window_size_x / 2.0f, window_size_y - 35.0f),
+              physics(window_size_x, window_size_y),
               ball_lost(false),
-              bottom_border(window.getSize().y) { }
+              bottom_border(window_size_y) { }
 
-    void update(char key) {
+    void update(unsigned int key) {
 
         // шарик ушел за пределы поля
         if(ball.getPosition().y > bottom_border) {
@@ -519,14 +521,65 @@ public:
 
         sleep(sf::milliseconds(10));
     }
+	const sf::Vector2f givePlayerCoords() const {
+		return physics.givePlayerCoords();
+	}
+
+	const sf::Vector2f giveBallCoords() const {
+		return physics.giveBallCoords();
+	}
+
 
     ~logic_world() { }
 };
 
 class server {
 private:
-
+	logic_world serv_world;
+	sf::TcpListener listener;
+	sf::TcpSocket socket; //программный интерфейс для обеспечения обмена данными между процессами
+	sf::Packet INPUT;
+	sf::Packet OUTPUT;
+	//Для осуществления пакетной передачи дынных
+	unsigned int key;
 public:
+	server(const unsigned short port) : serv_world(1024,768) {
+		listener.listen(port);
+		std::cout << "Server is listening to port " << port << ", waiting for connections... " << std::endl;
+		listener.accept(socket);
+		std::cout << "Client is connected " << std::endl;
+	}
+	void input() {
+
+		socket.receive(INPUT);
+		INPUT >>  key;
+		std::cout << "Key: " << key << std::endl;
+		INPUT.clear();
+	}
+
+
+	unsigned int get_key() const {
+		return key;
+	}
+
+	void  output() {
+		serv_world.update(key);
+
+		std::cout << "Player coord : " << serv_world.givePlayerCoords().x << " : " <<
+				serv_world.givePlayerCoords().y << std::endl;
+
+		OUTPUT << serv_world.givePlayerCoords().x << serv_world.givePlayerCoords().y <<
+				serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
+
+		socket.send(OUTPUT);
+		OUTPUT.clear();
+
+	}
+
+	~server() {
+		socket.disconnect();
+		listener.close();
+	};
 
 };
 
@@ -535,32 +588,56 @@ public:
 
 
 int main() {
-    // Создаем главное окно приложения
-    sf::RenderWindow window(sf::VideoMode(1024, 800), "Arcanoid!");
-    window.setFramerateLimit(50);
-    window.setVerticalSyncEnabled(true);
 
-    // logic_world game_o(window);
+	sf::IpAddress ip = sf::IpAddress::getLocalAddress();	//Локальный ip Адресс
+	std::cout << ip << std::endl;
+	char mode;
+	std::cin >> mode;
+	std::cin >> ip;
+	// logic_world game_o(window);
+	if (mode == 'c') {
+		// Создаем главное окно приложения
+		sf::RenderWindow window(sf::VideoMode(1024, 800), "Arcanoid!");
+		window.setFramerateLimit(50);
+		window.setVerticalSyncEnabled(true);
 
-    client game(window, sf::IpAddress("192.168.0.1"));
+		client game(window, ip);
+		// Главный цикл приложения
+		while (window.isOpen()) {
+			// Обрабатываем события в цикле
+			sf::Event event;
+			while (window.pollEvent(event)) {
+				// Кроме обычного способа наше окно будет закрываться по нажатию на Escape
+				if (event.type == sf::Event::Closed ||
+					(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape))
+					window.close();
+			}
 
-    // Главный цикл приложения
-    while(window.isOpen())
-    {
-        // Обрабатываем события в цикле
-        sf::Event event;
-        while(window.pollEvent(event))
-        {
-            // Кроме обычного способа наше окно будет закрываться по нажатию на Escape
-            if(event.type == sf::Event::Closed ||
-               (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape))
-                window.close();
-        }
+			game.run(window);
 
-        game.run();
+			// game.update();
+		}
+ 	} else {
+		//Сервер с логическим миром и физикой пока только для одного игрока
+	server serv(2000);
 
-        // game.update();
-    }
+		// Создаем главное окно приложенияc
+		sf::RenderWindow window(sf::VideoMode(150,150), "Server!");
+		window.setFramerateLimit(50);
+		window.setVerticalSyncEnabled(true);
+		while (window.isOpen()) {
 
-    return 0;
-}
+		sf::Event event;
+			while (window.pollEvent(event)) {
+				// Кроме обычного способа наше окно будет закрываться по нажатию на Escape
+				if (event.type == sf::Event::Closed ||
+					(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape))
+					window.close();
+			}
+
+			serv.input();
+			serv.output();
+		}
+	}
+	return 0;
+ }
