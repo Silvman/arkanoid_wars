@@ -163,7 +163,7 @@ public:
         INPUT >> player_bottom_position.x >> player_bottom_position.y;
         INPUT >> player_top_position.x >> player_top_position.y;
         INPUT >> ball_position.x >> ball_position.y;
-        
+
         // раньше так работало:
         /*
 		INPUT >> x_bottom_player >> y_bottom_player >> x_top_player >> y_top_player >> x_ball >> y_ball;
@@ -740,7 +740,7 @@ public:
         // Серв должен принимать 4 значения-ключа - движение нижнего, действие нижнего, движение верхнего, действие верхнего
         // В движениях: 1 - влево, 2 - вправо, 0 - по-умолчанию
         // В действиях  1 - запуск шара
-        
+
 		socket_1.receive(INPUT);
 
 		INPUT >> num >> key_bottom_move >> key_bottom_action;
@@ -798,7 +798,7 @@ int main() {
 	if (mode == 'c') {
         std::cin >> ip;
 		// Создаем главное окно приложения
-		sf::RenderWindow window(sf::VideoMode(1024, 800), "Arcanoid!");
+		sf::RenderWindow window(sf::VideoMode(1024, 768), "Arcanoid!");
 		window.setFramerateLimit(50);
 		window.setVerticalSyncEnabled(true);
 
