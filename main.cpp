@@ -74,8 +74,7 @@ public:
     graphics_scene(sf::RenderWindow& window) : window(window) {
         // TODO: тут координаты не сходятся с теми, что в logic
 
-		if (!font.loadFromFile("shr.ttf"))
-			std::cout<< "Trouble";
+        font.loadFromFile("/home/alex/gittt/arkanoid_wars/CyrilicOld.TTF");
 
         player_bottom.setPosition(window.getSize().x / 2, window.getSize().y - 20);
         player_bottom.setSize(sf::Vector2f(100, 10));
@@ -83,8 +82,9 @@ public:
 
 		conect.setColor(sf::Color::Red);
 		conect.setFont(font);
-		conect.setCharacterSize(40);
-		conect.setPosition(window.getSize().x/2,window.getSize().y/2);
+		conect.setCharacterSize(50);
+		conect.setPosition(window.getSize().x/2 - 280 ,window.getSize().y/2 );
+
 
         player_top.setPosition(window.getSize().x / 2, 20);
         player_top.setSize(sf::Vector2f(100, 10));
