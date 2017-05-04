@@ -125,7 +125,7 @@ public:
 	void draw_wait_con(){
 
 			window.clear();
-			conect.setString("Waiting for connection");
+			conect.setString("Waiting other player");
 			window.draw(conect);
 
 			window.display();
@@ -161,7 +161,6 @@ private:
 
 public:
     client(sf::RenderWindow& window, sf::IpAddress ip) : graphics(window), key_move(0), key_action(0) {
-		graphics.draw_wait_con();
 		socket.connect(ip, 2000);
         std::cout << "Connected with server" << std::endl;
 
@@ -169,6 +168,7 @@ public:
 
         INPUT >> my_number;
         std::cout << "my number is: " << my_number << std::endl;
+		graphics.draw_wait_con();
     }
 
     void run(sf::RenderWindow& window) {
@@ -189,7 +189,6 @@ public:
 
 		std::cout << "key_move: " << key_move << ", key_action: " << key_action << std::endl;
 		OUTPUT << my_number << key_move << key_action;
-		std::cout << "fil" ;
         socket.send(OUTPUT);
 		OUTPUT.clear();
 
