@@ -44,10 +44,12 @@
 class graphics_scene {
 private:
     sf::RenderWindow& window;
+	sf::Font font;
 
     sf::RectangleShape player_bottom;
     sf::RectangleShape player_top;
     sf::CircleShape ball;
+	sf::Text conect;
     // block_body* blocks;
 
     class block_body {
@@ -71,9 +73,18 @@ private:
 public:
     graphics_scene(sf::RenderWindow& window) : window(window) {
         // TODO: тут координаты не сходятся с теми, что в logic
+
+		if (!font.loadFromFile("shr.ttf"))
+			std::cout<< "Trouble";
+
         player_bottom.setPosition(window.getSize().x / 2, window.getSize().y - 20);
         player_bottom.setSize(sf::Vector2f(100, 10));
         player_bottom.setOrigin(50, 5); // хардкод
+
+		conect.setColor(sf::Color::Red);
+		conect.setFont(font);
+		conect.setCharacterSize(40);
+		conect.setPosition(window.getSize().x/2,window.getSize().y/2);
 
         player_top.setPosition(window.getSize().x / 2, 20);
         player_top.setSize(sf::Vector2f(100, 10));
@@ -83,9 +94,13 @@ public:
         ball.setRadius(10);
     }
 
-    void draw(const sf::Vector2f& player_bottom_coords, const sf::Vector2f& player_top_coords, const sf::Vector2f& ball_coords) {
+    void draw(const sf::Vector2f& player_bottom_coords, const sf::Vector2f& player_top_coords,
+			  const sf::Vector2f& ball_coords, bool connection) {
         window.clear();
-
+		if (connection == 0) {
+			conect.setString("Problems with connecting another player");
+			window.draw(conect);
+		}
         player_bottom.setPosition(player_bottom_coords);
         player_top.setPosition(player_top_coords);
         ball.setPosition(ball_coords);
@@ -97,14 +112,22 @@ public:
         // Отрисовка
         window.display();
     }
+	void draw_connection() {
+		window.clear();
+
+		conect.setString("Problems with connection");
+		window.draw(conect);
+
+		window.display();
+	}
 
     ~graphics_scene() {}
 };
-
+//
 class client {
 private:
     unsigned my_number;
-
+	bool connection;
     unsigned int key_move, key_action;
 
     graphics_scene graphics;
@@ -157,12 +180,12 @@ public:
         socket.send(OUTPUT);
 		OUTPUT.clear();
 
-        socket.receive(INPUT);
-		std::cout << "Packet recieved"<< std::endl;
-
-        INPUT >> player_bottom_position.x >> player_bottom_position.y;
-        INPUT >> player_top_position.x >> player_top_position.y;
-        INPUT >> ball_position.x >> ball_position.y;
+        if (socket.receive(INPUT) == sf::Socket::Done){
+			std::cout << "Packet recieved"<< std::endl;
+			INPUT >> connection;
+			INPUT >> player_bottom_position.x >> player_bottom_position.y;
+			INPUT >> player_top_position.x >> player_top_position.y;
+        	INPUT >> ball_position.x >> ball_position.y;
 
         // раньше так работало:
         /*
@@ -172,13 +195,15 @@ public:
         ball_position.x = x_ball; ball_position.y = y_ball;
         */
 
-        std::cout << "player bottom: (" << player_bottom_position.x << ", " << player_bottom_position.y << ")" << std::endl;
-        std::cout << "player top: (" << player_top_position.x << ", " << player_top_position.y << ")" << std::endl;
-        std::cout << "ball: (" << ball_position.x << ", " << ball_position.y << ")" << std::endl;
+        	std::cout << "player bottom: (" << player_bottom_position.x << ", " << player_bottom_position.y << ")" << std::endl;
+        	std::cout << "player top: (" << player_top_position.x << ", " << player_top_position.y << ")" << std::endl;
+        	std::cout << "ball: (" << ball_position.x << ", " << ball_position.y << ")" << std::endl;
 
-		graphics.draw(player_bottom_position, player_top_position, ball_position);
+			graphics.draw(player_bottom_position, player_top_position, ball_position, connection);
 
-        sleep(sf::milliseconds(10));
+		} else graphics.draw_connection();
+
+		sleep(sf::milliseconds(10));
     }
 
     ~client() { socket.disconnect(); }
@@ -695,6 +720,17 @@ public:
     ~logic_world() { }
 };
 
+struct DATA{
+	unsigned int key_bottom_move;
+	unsigned int key_bottom_action;
+	unsigned int key_top_move;
+	unsigned int key_top_action;
+	bool bot_connect;
+	bool top_connect;
+
+	unsigned num;
+};
+
 class server {
 private:
 	logic_world serv_world;
@@ -705,15 +741,18 @@ private:
 
     sf::Packet INPUT;
     sf::Packet OUTPUT;
+	bool connection;
 	//Для осуществления пакетной передачи дынных
 
-    unsigned int key_bottom_move;
+	DATA data;
+
+   /* unsigned int key_bottom_move;
     unsigned int key_bottom_action;
     unsigned int key_top_move;
     unsigned int key_top_action;
 
     unsigned num;
-
+*/
 
 public:
 	server(const unsigned short port) : serv_world(1024,768) {
@@ -741,39 +780,64 @@ public:
         // В движениях: 1 - влево, 2 - вправо, 0 - по-умолчанию
         // В действиях  1 - запуск шара
 
-		socket_1.receive(INPUT);
+		if (socket_1.receive(INPUT) == sf::Socket::Done ) {
+			data.bot_connect = 1;
 
-		INPUT >> num >> key_bottom_move >> key_bottom_action;
-		std::cout << "Socket 1. Recieved: " << num << ", " << key_bottom_move << ", " << key_bottom_action << std::endl;
-		INPUT.clear();
+			INPUT >> data.num >> data.key_bottom_move >> data.key_bottom_action;
+			std::cout << "Socket 1. Recieved: " << data.num << ", " << data.key_bottom_move <<
+					", " << data.key_bottom_action << std::endl;
 
-        socket_2.receive(INPUT);
+			INPUT.clear();
 
-        INPUT >> num >> key_top_move >> key_top_action;
-        std::cout << "Socket 2. Recieved: " << num << ", " << key_top_move << ", " << key_top_action << std::endl;
-        INPUT.clear();
+		} else data.bot_connect = 0;
 
+		if(socket_2.receive(INPUT) == sf::Socket::Done) {
+			data.top_connect = 1;
+
+			INPUT >> data.num >> data.key_top_move >> data.key_top_action;
+			std::cout << "Socket 2. Recieved: " << data.num << ", " << data.key_top_move <<
+					", " << data.key_top_action << std::endl;
+
+			INPUT.clear();
+		} else data.top_connect = 0;
 	}
 
-    /*
-	unsigned int get_key() const {
-		return key;
-	}*/
 
 	void output() {
-		serv_world.update(key_bottom_move, key_bottom_action, key_top_move, key_top_action);
-        /*
-		std::cout << "Player coord : " << serv_world.givePlayerCoords().x << " : " <<
-				serv_world.givePlayerCoords().y << std::endl;
-        */
+		if (data.bot_connect == 1 && data.top_connect == 1) {
+			serv_world.update(data.key_bottom_move, data.key_bottom_action, data.key_top_move, data.key_top_action);
 
-		OUTPUT << serv_world.givePlayerBottomCoords().x << serv_world.givePlayerBottomCoords().y;
-        OUTPUT << serv_world.givePlayerTopCoords().x << serv_world.givePlayerTopCoords().y;
-        OUTPUT << serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
+			connection = 1;
 
-        socket_1.send(OUTPUT);
-        socket_2.send(OUTPUT);
-		OUTPUT.clear();
+			OUTPUT << connection;
+			OUTPUT << serv_world.givePlayerBottomCoords().x << serv_world.givePlayerBottomCoords().y;
+			OUTPUT << serv_world.givePlayerTopCoords().x << serv_world.givePlayerTopCoords().y;
+			OUTPUT << serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
+
+			socket_1.send(OUTPUT);
+			socket_2.send(OUTPUT);
+			OUTPUT.clear();
+
+		} else {
+
+			OUTPUT << connection;
+			OUTPUT << serv_world.givePlayerBottomCoords().x << serv_world.givePlayerBottomCoords().y;
+			OUTPUT << serv_world.givePlayerTopCoords().x << serv_world.givePlayerTopCoords().y;
+			OUTPUT << serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
+		}
+
+		if(data.bot_connect == 1 && data.top_connect == 0) {
+			socket_1.send(OUTPUT);
+			OUTPUT.clear();
+		}
+
+		if(data.bot_connect == 0 && data.top_connect == 1) {
+			socket_2.send(OUTPUT);
+			OUTPUT.clear();
+		}
+
+		connection = 0;
+
 	}
 
 	~server() {
@@ -802,7 +866,8 @@ int main() {
 		window.setFramerateLimit(50);
 		window.setVerticalSyncEnabled(true);
 
-		client game(window, ip);
+		//client game(window, ip);
+		graphics_scene sxl(window);
 		// Главный цикл приложения
 		while (window.isOpen()) {
 			// Обрабатываем события в цикле
@@ -813,8 +878,8 @@ int main() {
 					(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape))
 					window.close();
 			}
-
-			game.run(window);
+			sxl.draw_connection();
+		//	game.run(window);
 
 			// game.update();
 		}

@@ -16,7 +16,7 @@ void runTcpServer(unsigned short port)
 	// Create a server socket to accept new connections
 	sf::TcpListener listener;
 	// Listen to the given port for incoming connections
-	if (listener.listen(2888) != sf::Socket::Done)
+	if (listener.listen(2000) != sf::Socket::Done)
 		return;
 	std::cout << "Server is listening to port " << port << ", waiting for connections... " << std::endl;
 
