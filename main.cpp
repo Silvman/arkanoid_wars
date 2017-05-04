@@ -98,7 +98,8 @@ public:
 			  const sf::Vector2f& ball_coords, bool connection) {
         window.clear();
 		if (connection == 0) {
-			conect.setString("Problems with connecting another player");
+			conect.setString("Problems with connecting \n another player");
+
 			window.draw(conect);
 		}
         player_bottom.setPosition(player_bottom_coords);
@@ -112,7 +113,7 @@ public:
         // Отрисовка
         window.display();
     }
-	void draw_connection() {
+	void draw_er_con() {
 		window.clear();
 
 		conect.setString("Problems with connection");
@@ -120,6 +121,16 @@ public:
 
 		window.display();
 	}
+
+	void draw_wait_con(){
+
+			window.clear();
+			conect.setString("Waiting for connection");
+			window.draw(conect);
+
+			window.display();
+	}
+
 
     ~graphics_scene() {}
 };
@@ -150,6 +161,7 @@ private:
 
 public:
     client(sf::RenderWindow& window, sf::IpAddress ip) : graphics(window), key_move(0), key_action(0) {
+		graphics.draw_wait_con();
 		socket.connect(ip, 2000);
         std::cout << "Connected with server" << std::endl;
 
@@ -177,6 +189,7 @@ public:
 
 		std::cout << "key_move: " << key_move << ", key_action: " << key_action << std::endl;
 		OUTPUT << my_number << key_move << key_action;
+		std::cout << "fil" ;
         socket.send(OUTPUT);
 		OUTPUT.clear();
 
@@ -201,7 +214,7 @@ public:
 
 			graphics.draw(player_bottom_position, player_top_position, ball_position, connection);
 
-		} else graphics.draw_connection();
+		} else graphics.draw_er_con();
 
 		sleep(sf::milliseconds(10));
     }
@@ -866,8 +879,7 @@ int main() {
 		window.setFramerateLimit(50);
 		window.setVerticalSyncEnabled(true);
 
-		//client game(window, ip);
-		graphics_scene sxl(window);
+		client game(window, ip);
 		// Главный цикл приложения
 		while (window.isOpen()) {
 			// Обрабатываем события в цикле
@@ -878,8 +890,7 @@ int main() {
 					(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape))
 					window.close();
 			}
-			sxl.draw_connection();
-		//	game.run(window);
+			game.run(window);
 
 			// game.update();
 		}
