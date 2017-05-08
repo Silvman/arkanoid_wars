@@ -51,8 +51,11 @@ private:
 	sf::RectangleShape player_top;
 	sf::CircleShape ball;
 	sf::Text conect;
+	sf::Text score;
 	sf::Texture texture_background;
 	sf::Sprite background;
+	sf::Texture texture_heart;
+	sf::Sprite heart;
 
 	sf::RectangleShape block;
 
@@ -93,8 +96,14 @@ public:
 		font.loadFromFile("/home/alex/gittt/arkanoid_wars/CyrilicOld.TTF");
 		texture_background.loadFromFile("/home/alex/gittt/arkanoid_wars/background.jpg");
 		background.setTexture(texture_background);
+		background.setColor(sf::Color(176,176,176));
+
+		texture_heart.loadFromFile("/home/alex/gittt/arkanoid_wars/heart.png");
+		heart.setTexture(texture_heart);
+		heart.setScale(0.6,0.6);
 
 		player_bottom.setPosition(window.getSize().x / 2, window.getSize().y - 20);
+		player_bottom.setFillColor(sf::Color::Blue);
 		player_bottom.setSize(sf::Vector2f(100, 10));
 		player_bottom.setOrigin(50, 5); // хардкод
 
@@ -103,8 +112,13 @@ public:
 		conect.setCharacterSize(50);
 		conect.setPosition(window.getSize().x/2 - 280 ,window.getSize().y/2 );
 
+		score.setFont(font);
+		score.setCharacterSize(30);
+
+
 		player_top.setPosition(window.getSize().x / 2, 35);
 		player_top.setSize(sf::Vector2f(100, 10));
+		player_top.setFillColor(sf::Color::Red);
 		player_top.setOrigin(50, 5); // хардкод
 
 		ball.setPosition(window.getSize().x / 2, window.getSize().y - 30);
@@ -118,10 +132,14 @@ public:
 	}
 
 	void draw(const sf::Vector2f& player_bottom_coords, const sf::Vector2f& player_top_coords,
-			  const sf::Vector2f& ball_coords, bool canEarseBlock, bool connection) {
+			  const sf::Vector2f& ball_coords, bool canEarseBlock, bool connection, unsigned int bot_lives = 3,
+			  unsigned int top_lives = 3, unsigned int bot_score = 0, unsigned int top_score = 0) {
 		window.clear();
+		window.draw(background);
 
 		if (connection == 0) {
+
+			conect.setPosition(window.getSize().x/2 - 280 ,window.getSize().y/2 - 30 );
 			conect.setString("Problems with connecting \n another player");
 
 			window.draw(conect);
@@ -132,7 +150,31 @@ public:
 		ball.setPosition(ball_coords);
 
 
-		window.draw(background);
+
+		for (int i = 0; i < bot_lives; i++){
+			heart.setColor(sf::Color::Blue);
+			heart.setPosition(15,410 + i * 25);
+			window.draw(heart);
+		}
+
+		for (int i = 0; i < top_lives; i++){
+			heart.setColor(sf::Color::Red);
+			heart.setPosition(15,290 + i * 25);
+			window.draw(heart);
+		}
+
+
+		score.setString(std::to_string(bot_score));
+		score.setPosition(window.getSize().x - 75, 450);
+		score.setColor(sf::Color::Blue);
+		window.draw(score);
+
+		score.setString(std::to_string(top_score));
+		score.setColor(sf::Color::Red);
+		score.setPosition(window.getSize().x - 75, 330);
+		window.draw(score);
+
+
 		window.draw(block);
 		window.draw(player_bottom);
 		window.draw(player_top);
@@ -146,6 +188,7 @@ public:
 		window.clear();
 
 		window.draw(background);
+		conect.setPosition(window.getSize().x/2 - 280 ,window.getSize().y/2 );
 		conect.setString("Problems with connection");
 		window.draw(conect);
 
@@ -157,6 +200,7 @@ public:
 		window.clear();
 
 		window.draw(background);
+		conect.setPosition(window.getSize().x/2 - 280 ,window.getSize().y/2 );
 		conect.setString("Waiting other player");
 		window.draw(conect);
 
@@ -248,7 +292,13 @@ public:
 		sleep(sf::milliseconds(10));
 	}
 
-	~client() { socket.disconnect(); }
+	void disconnect() {
+		socket.disconnect();
+	}
+
+	~client() {
+		socket.disconnect();
+	}
 };
 
 /* ----------------------------- */
@@ -1046,7 +1096,9 @@ public:
 	{
 		texture_background.loadFromFile("/home/alex/gittt/arkanoid_wars/background.jpg");
 		background.setTexture(texture_background);
+		background.setColor(sf::Color(176,176,176));
 		font.loadFromFile("/home/alex/gittt/arkanoid_wars/CyrilicOld.TTF");
+
 
 		start.setFont(font);
 		start.setCharacterSize(75);
@@ -1066,6 +1118,7 @@ public:
 			menuNum = 0;
 
 			window.clear();
+			window.draw(background);
 
 			if (sf::IntRect(window.getSize().x / 2 - 280, window.getSize().y / 2 - 75, 375, 75)
 					.contains(sf::Mouse::getPosition(window))) {
@@ -1086,8 +1139,6 @@ public:
 				if (menuNum == 2)
 					window.close();
 			}
-
-			window.draw(background);
 			window.draw(start);
 			window.draw(end);
 
@@ -1104,6 +1155,8 @@ public:
 			CLIENT.run(window);
 		}
 	}
+
+	~menu(){};
 };
 
 /* ----------------------------- */
