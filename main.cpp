@@ -987,7 +987,7 @@ private:
             int score, lives;
 
         public:
-            logic_player(const float x_start, const float y_start) : position(x_start, y_start), score(0), lives(3) { }
+            logic_player(const float x_start, const float y_start, int lives = 3) : position(x_start, y_start), score(0), lives(lives) { }
 
             void setPosition(sf::Vector2f new_position) {
                 position = new_position;
@@ -1091,7 +1091,7 @@ private:
 
 public:
     logic_world(const float window_size_x,const float window_size_y)
-            : player_bottom(window_size_x / 2.0f, window_size_y - 25.0f),
+            : player_bottom(window_size_x / 2.0f, window_size_y - 25.0f, 4),
               player_top(window_size_x / 2.0f, window_size_y - 25.0f),
               ball(window_size_x / 2.0f, window_size_y - 35.0f),
               physics(window_size_x, window_size_y),
