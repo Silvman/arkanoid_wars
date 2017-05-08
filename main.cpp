@@ -4,6 +4,7 @@
 #include <iostream>
 
 #define PTM 30.0f
+#define DEG 57.29577f
 
 /*
  * TODO : в целом
@@ -20,8 +21,8 @@
  * Сделать начальный экран
  * Сделать экраны, вылетающие при поражении\победе
  *
- * Прикрутить второго игрока
- * Прикрутить сервер
+ * (+) Прикрутить второго игрока
+ * (+) Прикрутить сервер
  *
  * Сделать графоний и звук
  *
@@ -50,31 +51,52 @@ private:
     sf::RectangleShape player_top;
     sf::CircleShape ball;
 	sf::Text conect;
-    // block_body* blocks;
-
-    class block_body {
+    
+    sf::RectangleShape block;
+    
+    /*
+    class block_block {
     private:
-        sf::RectangleShape body;
+        sf::RectangleShape block;
+        bool isExists;
+
     public:
-        block_body(const float x_start, const float y_start, const float height, const float width, const float angle = 0) {
+        block_block(const float x_start, const float y_start, const float height, const float width, const float angle = 0) {
             sf::Vector2f size(height, width);
 
-            body.setPosition(x_start, y_start);
-            body.setSize(size);
-            body.setOrigin(height/2, width/2); // хардкод?
-            body.setRotation(angle);
+            block.setPosition(x_start, y_start);
+            block.setSize(size);
+            block.setOrigin(height/2, width/2); // хардкод?
+            block.setRotation(angle);
         }
         // как удалять блоки
-        ~block_body(){};
+
+        void draw(sf::RenderWindow& window) {
+            if(isExists) {
+                window.draw(block);
+            }
+        }
+
+        void destroy() {
+            isExists = false;
+        }
+
+        const sf::RectangleShape& getShape() const {
+            return block;
+        }
+
+        ~block_block(){};
 
     };
 
+    block_block test_block;
+     */
 
 public:
     graphics_scene(sf::RenderWindow& window) : window(window) {
         // TODO: тут координаты не сходятся с теми, что в logic
 
-        font.loadFromFile("/home/alex/gittt/arkanoid_wars/CyrilicOld.TTF");
+        font.loadFromFile("/home/silvman/CLionProjects/arkanoid_mult/CyrilicOld.TTF");
 
         player_bottom.setPosition(window.getSize().x / 2, window.getSize().y - 20);
         player_bottom.setSize(sf::Vector2f(100, 10));
@@ -84,28 +106,38 @@ public:
 		conect.setFont(font);
 		conect.setCharacterSize(50);
 		conect.setPosition(window.getSize().x/2 - 280 ,window.getSize().y/2 );
-
-
-        player_top.setPosition(window.getSize().x / 2, 20);
+        
+        player_top.setPosition(window.getSize().x / 2, 35);
         player_top.setSize(sf::Vector2f(100, 10));
         player_top.setOrigin(50, 5); // хардкод
 
         ball.setPosition(window.getSize().x / 2, window.getSize().y - 30);
         ball.setRadius(10);
+
+        block.setPosition(window.getSize().x / 2, window.getSize().y / 2);
+        block.setSize(sf::Vector2f(40.0f, 40.0f));
+        block.setOrigin(20.0f, 20.0f); // хардкод?
+        block.setRotation(30);
+
     }
 
     void draw(const sf::Vector2f& player_bottom_coords, const sf::Vector2f& player_top_coords,
-			  const sf::Vector2f& ball_coords, bool connection) {
+			  const sf::Vector2f& ball_coords, bool canEarseBlock, bool connection) {
         window.clear();
+
 		if (connection == 0) {
 			conect.setString("Problems with connecting \n another player");
 
 			window.draw(conect);
 		}
+
         player_bottom.setPosition(player_bottom_coords);
         player_top.setPosition(player_top_coords);
         ball.setPosition(ball_coords);
 
+
+
+        window.draw(block);
         window.draw(player_bottom);
         window.draw(player_top);
         window.draw(ball);
@@ -113,6 +145,7 @@ public:
         // Отрисовка
         window.display();
     }
+
 	void draw_er_con() {
 		window.clear();
 
@@ -131,10 +164,9 @@ public:
 			window.display();
 	}
 
-
     ~graphics_scene() {}
 };
-//
+
 class client {
 private:
     unsigned my_number;
@@ -150,6 +182,8 @@ private:
     sf::Vector2f player_bottom_position;
     sf::Vector2f player_top_position;
     sf::Vector2f ball_position;
+
+    bool canEarseBlock;
 
     /*
     float x_bottom_player, y_bottom_player;
@@ -198,20 +232,13 @@ public:
 			INPUT >> player_bottom_position.x >> player_bottom_position.y;
 			INPUT >> player_top_position.x >> player_top_position.y;
         	INPUT >> ball_position.x >> ball_position.y;
-
-        // раньше так работало:
-        /*
-		INPUT >> x_bottom_player >> y_bottom_player >> x_top_player >> y_top_player >> x_ball >> y_ball;
-        player_bottom_position.x = x_bottom_player; player_bottom_position.y = y_bottom_player;
-        player_top_position.x = x_top_player; player_top_position.y = y_top_player;
-        ball_position.x = x_ball; ball_position.y = y_ball;
-        */
+            INPUT >> canEarseBlock;
 
         	std::cout << "player bottom: (" << player_bottom_position.x << ", " << player_bottom_position.y << ")" << std::endl;
         	std::cout << "player top: (" << player_top_position.x << ", " << player_top_position.y << ")" << std::endl;
         	std::cout << "ball: (" << ball_position.x << ", " << ball_position.y << ")" << std::endl;
 
-			graphics.draw(player_bottom_position, player_top_position, ball_position, connection);
+			graphics.draw(player_bottom_position, player_top_position, ball_position, canEarseBlock, connection);
 
 		} else graphics.draw_er_con();
 
@@ -235,58 +262,74 @@ public:
  * Физика столкновения - чтобы кидал флаги об ударенных блоках
  *
  */
+
+
 class physics_scene {
 private:
     b2World world;
 
-    class physic_ball {
+    class blocksKickListener : public b2ContactListener {
+    public:
+        void BeginContact(b2Contact* contact) { }
+
+        void EndContact(b2Contact* contact) {
+            std::cout << "I'm working" << std::endl;
+
+            physic_body* bodyUserData = static_cast<physic_body*>(contact->GetFixtureA()->GetBody()->GetUserData());
+
+            std::cout << bodyUserData->getId() << std::endl;
+            if ( bodyUserData->getId() == 4 ) {
+                std::cout << "Fir!" << std::endl;
+                reinterpret_cast<physic_block*>(bodyUserData)->setKicked();
+            }
+
+            bodyUserData = static_cast<physic_block*>(contact->GetFixtureB()->GetBody()->GetUserData());
+            std::cout << bodyUserData->getId() << std::endl;
+            if ( bodyUserData->getId() == 4 ) {
+                std::cout << "Fir!" << std::endl;
+                reinterpret_cast<physic_block*>(bodyUserData)->setKicked();
+            }
+        }
+    };
+
+    blocksKickListener listener;
+
+    class physic_body {
+    private:
+        int id;
+
+    public:
+        physic_body(int id) : id(id) {}
+
+        int getId() const {
+            return id;
+        }
+
+        virtual ~physic_body() {}
+    };
+
+    class physic_ball: public physic_body {
         private:
             b2World& world;
             b2Body* ball;
             b2Vec2 ball_speed;
 
-        public:
-            physic_ball(b2World& world, const float play_pos_x, const float play_pos_y, const b2Vec2& speed)
-                    : world(world), ball_speed(speed) {
-                b2BodyDef ball_def;
-                ball_def.type = b2_dynamicBody;
-                ball_def.position.Set(play_pos_x / PTM, (play_pos_y - 25) / PTM);
-                ball = world.CreateBody(&ball_def);
-
-                b2CircleShape ball_shape;
-                ball_shape.m_radius = 10/PTM;
-
-                b2FixtureDef ball_fixture_def;
-                ball_fixture_def.shape = &ball_shape;
-                ball_fixture_def.density = 10.1f;
-                ball_fixture_def.restitution = 1.05f;
-                ball_fixture_def.friction = 0.0f;
-
-                ball->CreateFixture(&ball_fixture_def);
-            }
-
-            physic_ball& operator = (const physic_ball& from) {
-                ball = from.ball;
-                // this->ball_speed = ball_speed; // не нужно пока, т.к. под скоростью подразумевается начальная скорость
-            }
-
-            void restart(const b2Vec2& player_position, const bool is_top) {
-                world.DestroyBody(ball);
-                //копипаст! D:
+            b2Body* createBall(const float play_pos_x, const float play_pos_y, const bool is_top) {
+                b2Body* new_ball;
 
                 b2BodyDef ball_def;
                 ball_def.type = b2_dynamicBody;
 
                 if(is_top) {
-                    ball_def.position.Set(player_position.x, player_position.y + 5 / PTM); // тут еще остается ptm TODO
+                    ball_def.position.Set(play_pos_x, play_pos_y + 5 / PTM); // тут еще остается ptm TODO
                     // TODO: сделать нормальное изменение скорости
                     ball_speed = b2Vec2(ball_speed.x, fabsf(ball_speed.y));
                 } else {
-                    ball_def.position.Set(player_position.x, player_position.y - 25 / PTM); // тут еще остается ptm
+                    ball_def.position.Set(play_pos_x, play_pos_y - 15 / PTM); // тут еще остается ptm
                     ball_speed = b2Vec2(ball_speed.x, -fabsf(ball_speed.y));
                 }
 
-                ball = world.CreateBody(&ball_def);
+                new_ball = world.CreateBody(&ball_def);
 
                 b2CircleShape ball_shape;
                 ball_shape.m_radius = 10/PTM;
@@ -297,7 +340,25 @@ private:
                 ball_fixture_def.restitution = 1.05f;
                 ball_fixture_def.friction = 0.0f;
 
-                ball->CreateFixture(&ball_fixture_def);
+                // из-за особенностей хранения userData
+                new_ball->CreateFixture(&ball_fixture_def);
+
+                new_ball->SetUserData(this);
+
+                return new_ball;
+            };
+
+        public:
+            physic_ball(b2World& world, const float play_pos_x, const float play_pos_y, const b2Vec2& speed)
+                    : physic_body(3), world(world), ball_speed(speed) {
+                // false - так как игра всегда начинается с нижнего игрока
+                ball = createBall(play_pos_x, play_pos_y, false);
+            }
+
+            void restart(const b2Vec2& player_position, const bool is_top) {
+                world.DestroyBody(ball);
+
+                ball = createBall(player_position.x, player_position.y, is_top);
             }
 
             void lauch() {
@@ -333,7 +394,7 @@ private:
             ~physic_ball() { world.DestroyBody(ball); }
     };
 
-    class physic_player {
+    class physic_player: public physic_body {
         private:
             b2World& world;
             // указатели юзаем из-за особенностей либы (методы World принимают в качестве аргументов указатели и ничего больше)
@@ -341,11 +402,11 @@ private:
             b2Vec2 player_speed;
 
         public:
-            physic_player(b2World& world, const float start_x, const float start_y, const b2Vec2& speed)
-                    : world(world), player_speed(speed) {
+            physic_player(b2World& world, const float start_x, const float start_y, const b2Vec2& speed, const int id)
+                    : physic_body(id), world(world), player_speed(speed) {
                 b2BodyDef player_def;
                 player_def.type = b2_kinematicBody;
-                player_def.position.Set(start_x / PTM, start_y / PTM);
+                player_def.position.Set((start_x - 10) / PTM, (start_y - 10) / PTM);
                 player = world.CreateBody(&player_def);
 
                 b2PolygonShape player_shape;
@@ -358,6 +419,7 @@ private:
                 player_fixture_def.friction = 0.0f;
 
                 player->CreateFixture(&player_fixture_def);
+                player->SetUserData(this);
             }
 
             void stop() {
@@ -384,6 +446,7 @@ private:
                 }
             }
 
+
             const b2Vec2& getSpeed() const {
                 return player_speed;
             }
@@ -395,25 +458,68 @@ private:
             ~physic_player() { world.DestroyBody(player); }
     };
 
-    class physic_border {
+    class physic_border : public physic_body {
         private:
             b2World& world;
             b2Body* border;
 
         public:
 
-            physic_border(b2World& world, const float pos_x, const float pos_y, const float size_x, const float size_y) : world(world) {
+            physic_border(b2World& world, const float pos_x, const float pos_y, const float size_x, const float size_y)
+                    : physic_body(5), world(world) {
                 b2BodyDef border_def;
                 b2PolygonShape border_shape;
 
-                border_def.position.Set(pos_x/PTM, pos_y/PTM);
+                border_def.position.Set((pos_x - 10)/PTM, (pos_y - 10)/PTM);
                 border_shape.SetAsBox(size_x/PTM, size_y/PTM);
                 border = world.CreateBody(&border_def);
                 border->CreateFixture(&border_shape, 0.0f);
+
+                border->SetUserData(this);
             }
 
             ~physic_border() { world.DestroyBody(border); }
 
+    };
+
+    class physic_block : public physic_body {
+    private:
+        b2World& world;
+        b2Body* block;
+        bool is_kicked;
+        int number;
+
+    public:
+        physic_block(
+                b2World& world,
+                const float pos_x, const float pos_y,
+                const float size_x, const float size_y,
+                const float angle, const int number
+        ) : physic_body(4), world(world), is_kicked(false), number(number) {
+                b2BodyDef block_def;
+                b2PolygonShape block_shape;
+
+                block_def.position.Set((pos_x - 10)/PTM, (pos_y - 10)/PTM);
+                block_def.angle = angle / DEG;
+                block_shape.SetAsBox(size_x / PTM, size_y / PTM);
+                block = world.CreateBody(&block_def);
+                block->CreateFixture(&block_shape, 0.0f);
+
+                block->SetUserData(this);
+        }
+
+        void try_kick() {
+            if(is_kicked) {
+                std::cout << "Tried :c" << std::endl;
+                block->SetActive(0);
+            }
+        }
+
+        void setKicked() {
+            is_kicked = true;
+        }
+
+        ~physic_block() { }
     };
 
 
@@ -433,8 +539,9 @@ private:
     // делаем двух игроков => отключаем верхний барьер
     // physic_border top_border;
 
-    // b2Body** blocks;
+    /* ------------ Блоки ------------ */
 
+    std::vector<physic_block*> blocks;
 
     bool is_launched;
 
@@ -447,15 +554,50 @@ private:
 
 
 public:
-    physics_scene(const float window_size_x,const float window_size_y)
+    // каждому телу соответствует свой собственный id в зависимотси от рода
+    // 1 - платформа нижняя, 2 - платформа верхняя, 3 - шарик, 4 - блок, 5 - стенка
+
+    physics_scene(const float window_size_x, const float window_size_y)
             : world(b2Vec2(0.0f, 0.0f)),
-              ball(world, (window_size_x/ 2), (window_size_y - 35), b2Vec2(9.0f, -9.0f)),
-              player_bottom(world, (window_size_x / 2), (window_size_y - 35), b2Vec2(15, 0.0f)),
-              player_top(world, (window_size_x / 2), 35, b2Vec2(15, 0.0f)),
+              ball(world, (window_size_x/ 2), (window_size_y - 35), b2Vec2(0.0f, -9.0f)),
+              player_bottom(world, (window_size_x / 2), (window_size_y - 35), b2Vec2(15, 0.0f), 1),
+              player_top(world, (window_size_x / 2), 35, b2Vec2(15, 0.0f), 2),
               right_border(world, (window_size_x - 10), (window_size_y / 2), 10.0f, window_size_y / 2),
               left_border(world, 0.0f, (window_size_y / 2), 10.0f, window_size_y / 2),
               // top_border(world, (window_size_x / 2), 0.0f, (window_size_x / 2), 10.0f),
-              is_launched(false) { }
+              // test_block(world, (window_size_x / 2), (window_size_y / 2), 20.0f, 20.0f, 30.0f, 1),
+              is_launched(false)
+    {
+        world.SetContactListener(&listener);
+
+        blocks.push_back(new physic_block(world, 70, 100, 60.0f, 20.0f, 0.0f, 1));
+        blocks.push_back(new physic_block(world, 910, 100, 60.0f, 20.0f, 0.0f, 2));
+
+        blocks.push_back(new physic_block(world, 190, 140, 60.0f, 20.0f, 0.0f, 3));
+        blocks.push_back(new physic_block(world, 310, 140, 60.0f, 20.0f, 0.0f, 4));
+        blocks.push_back(new physic_block(world, 430, 140, 60.0f, 20.0f, 0.0f, 5));
+        blocks.push_back(new physic_block(world, 550, 140, 60.0f, 20.0f, 0.0f, 6));
+        blocks.push_back(new physic_block(world, 670, 140, 60.0f, 20.0f, 0.0f, 7));
+        blocks.push_back(new physic_block(world, 790, 140, 60.0f, 20.0f, 0.0f, 8));
+
+        blocks.push_back(new physic_block(world, 190, 180, 60.0f, 20.0f, 0.0f, 9));
+        blocks.push_back(new physic_block(world, 430, 180, 60.0f, 20.0f, 0.0f, 10));
+        blocks.push_back(new physic_block(world, 790, 180, 60.0f, 20.0f, 0.0f, 11));
+
+        blocks.push_back(new physic_block(world, 190, 220, 60.0f, 20.0f, 0.0f, 12));
+        blocks.push_back(new physic_block(world, 550, 220, 60.0f, 20.0f, 0.0f, 13));
+        blocks.push_back(new physic_block(world, 790, 220, 60.0f, 20.0f, 0.0f, 14));
+
+        blocks.push_back(new physic_block(world, 190, 260, 60.0f, 20.0f, 0.0f, 15));
+        blocks.push_back(new physic_block(world, 310, 260, 60.0f, 20.0f, 0.0f, 16));
+        blocks.push_back(new physic_block(world, 430, 260, 60.0f, 20.0f, 0.0f, 17));
+        blocks.push_back(new physic_block(world, 550, 260, 60.0f, 20.0f, 0.0f, 18));
+        blocks.push_back(new physic_block(world, 670, 260, 60.0f, 20.0f, 0.0f, 19));
+        blocks.push_back(new physic_block(world, 790, 260, 60.0f, 20.0f, 0.0f, 20));
+
+        blocks.push_back(new physic_block(world, 70, 300, 60.0f, 20.0f, 0.0f, 21));
+        blocks.push_back(new physic_block(world, 910, 300, 60.0f, 20.0f, 0.0f, 22));
+    }
 
     void analyseKeys(physic_player& player, const unsigned move, const unsigned action) {
         switch (move) {
@@ -485,6 +627,8 @@ public:
         }
     }
 
+
+   // костыльная тема
     void moveBall(physic_player& player, const unsigned move) {
         switch (move) {
             case 1:
@@ -539,8 +683,14 @@ public:
             moveBall(player_top, key_top_move);
         }
 
+        for(auto it = blocks.begin(); it != blocks.end(); it++) {
+            (*it)->try_kick();
+        }
+
         world.Step(dt, velocityIterations, positionIterations);
-        std::cout << dt << std::endl;
+
+
+        //std::cout << dt << std::endl;
     }
 
     const sf::Vector2f givePlayerBottomCoords() const {
@@ -558,7 +708,11 @@ public:
         return sf::Vector2f(coords.x * PTM, coords.y * PTM);
     }
 
-    ~physics_scene() { }
+    ~physics_scene() {
+        for(auto it = blocks.begin(); it != blocks.end(); it++) {
+            delete(*it);
+        }
+    }
 };
 
 // логика игры
@@ -642,6 +796,8 @@ private:
 
     physics_scene physics;
 
+    bool isBlockExist;
+
     const float bottom_border;
 
 
@@ -653,6 +809,7 @@ public:
               physics(window_size_x, window_size_y),
               who_lost_the_ball(0),
               who_leads_the_ball(1),
+              isBlockExist(1),
               bottom_border(window_size_y) { }
 
     void update(
@@ -701,6 +858,9 @@ public:
                           key_top_move, key_top_action,
                           who_lost_the_ball, who_leads_the_ball);
 
+
+        isBlockExist = false;
+
         // шарик отдается тому, кто его упустил
         if(who_lost_the_ball != 0)
             who_leads_the_ball = who_lost_the_ball;
@@ -728,6 +888,10 @@ public:
 	const sf::Vector2f giveBallCoords() const {
 		return ball.getPosition();
 	}
+
+    const bool canEarseBlock() {
+        return !isBlockExist;
+    };
 
     ~logic_world() { }
 };
@@ -796,8 +960,8 @@ public:
 			data.bot_connect = 1;
 
 			INPUT >> data.num >> data.key_bottom_move >> data.key_bottom_action;
-			std::cout << "Socket 1. Recieved: " << data.num << ", " << data.key_bottom_move <<
-					", " << data.key_bottom_action << std::endl;
+			//std::cout << "Socket 1. Recieved: " << data.num << ", " << data.key_bottom_move <<
+			//		", " << data.key_bottom_action << std::endl;
 
 			INPUT.clear();
 
@@ -807,8 +971,8 @@ public:
 			data.top_connect = 1;
 
 			INPUT >> data.num >> data.key_top_move >> data.key_top_action;
-			std::cout << "Socket 2. Recieved: " << data.num << ", " << data.key_top_move <<
-					", " << data.key_top_action << std::endl;
+			//std::cout << "Socket 2. Recieved: " << data.num << ", " << data.key_top_move <<
+			//		", " << data.key_top_action << std::endl;
 
 			INPUT.clear();
 		} else data.top_connect = 0;
@@ -825,17 +989,18 @@ public:
 			OUTPUT << serv_world.givePlayerBottomCoords().x << serv_world.givePlayerBottomCoords().y;
 			OUTPUT << serv_world.givePlayerTopCoords().x << serv_world.givePlayerTopCoords().y;
 			OUTPUT << serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
+            OUTPUT << serv_world.canEarseBlock();
 
 			socket_1.send(OUTPUT);
 			socket_2.send(OUTPUT);
 			OUTPUT.clear();
 
 		} else {
-
 			OUTPUT << connection;
 			OUTPUT << serv_world.givePlayerBottomCoords().x << serv_world.givePlayerBottomCoords().y;
 			OUTPUT << serv_world.givePlayerTopCoords().x << serv_world.givePlayerTopCoords().y;
 			OUTPUT << serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
+            OUTPUT << serv_world.canEarseBlock();
 		}
 
 		if(data.bot_connect == 1 && data.top_connect == 0) {
@@ -894,6 +1059,11 @@ int main() {
 			// game.update();
 		}
  	} else {
+/*        int pid = fork();
+        if (pid == 0) {
+            //run server
+        }
+        return 0;*/
 		//Сервер с логическим миром и физикой пока только для одного игрока
 	server serv(2000);
 
