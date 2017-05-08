@@ -14,8 +14,8 @@
  *
  * (+) Перенести обработку клавиатуры из физики в logic
  *
- * Сделать массив блоков
- * Сделать удара шарика о блок
+ * (+) Сделать массив блоков
+ * (+) Сделать удара шарика о блок
  * Сделать игровую логику - разбил все блоки и lives >= 0 - победил, lives < 0 - проиграл
  *
  * Сделать начальный экран
@@ -32,10 +32,42 @@
 /*
  * TODO: сервер и клиент
  *
- * Сделать подключение сокетов через selector
  * Клиент продолжает посылать данные даже после обрыва соединения. Это надо обрабатывать.
  *
  */
+
+
+typedef struct data_from_server {
+    bool connection;
+    sf::Vector2f player_bottom_coords, player_top_coords, ball_coords, ball_speed;
+    int broken_block;
+    bool isPlayerKicked;
+} data_from_server;
+
+// эта перегрузка нужна в сервере
+sf::Packet& operator << (sf::Packet& packet, data_from_server& from) {
+    packet << from.connection;
+    packet << from.player_bottom_coords.x << from.player_bottom_coords.y;
+    packet << from.player_top_coords.x << from.player_top_coords.y;
+    packet << from.ball_coords.x << from.ball_coords.y;
+    packet << from.ball_speed.x << from.ball_speed.y;
+    packet << from.broken_block;
+    packet << from.isPlayerKicked;
+
+    return packet;
+}
+
+// Эта перегрузка будет нужна в клиенте
+sf::Packet& operator >> (sf::Packet& packet, data_from_server& to) {
+    packet >> to.connection;
+    packet >> to.player_bottom_coords.x >> to.player_bottom_coords.y;
+    packet >> to.player_top_coords.x >> to.player_top_coords.y;
+    packet >> to.ball_coords.x >> to.ball_coords.y;
+    packet >> to.ball_speed.x >> to.ball_speed.y;
+    packet >> to.broken_block;
+
+    return packet;
+}
 
 
 /* ------ Клиенская часть ------ */
@@ -89,16 +121,48 @@ private:
 	block_block test_block;
 	 */
 
+    class block_body {
+        private:
+            sf::RectangleShape block;
+            bool isKicked;
+
+        public:
+            block_body(const float x_start, const float y_start, const float height, const float width, const float angle = 0)
+            {
+                sf::Vector2f size(height, width);
+
+                block.setPosition(x_start, y_start);
+                block.setSize(size);
+                block.setOrigin(height / 2, width / 2);
+                block.setRotation(angle);
+            }
+
+            void draw(sf::RenderWindow& window) {
+                if(!isKicked) {
+                    window.draw(block);
+                }
+            }
+
+            void kick() {
+                isKicked = true;
+            }
+
+            ~block_body() {};
+    };
+
+    std::vector<block_body> blocks;
+
+
 public:
 	graphics_scene(sf::RenderWindow& window) : window(window) {
 		// TODO: тут координаты не сходятся с теми, что в logic
 
-		font.loadFromFile("/home/alex/gittt/arkanoid_wars/CyrilicOld.TTF");
-		texture_background.loadFromFile("/home/alex/gittt/arkanoid_wars/background.jpg");
+		font.loadFromFile("../CyrilicOld.TTF");
+		texture_background.loadFromFile("../background.jpg");
 		background.setTexture(texture_background);
 		background.setColor(sf::Color(176,176,176));
 
-		texture_heart.loadFromFile("/home/alex/gittt/arkanoid_wars/heart.png");
+		texture_heart.loadFromFile("../heart.png");
 		heart.setTexture(texture_heart);
 		heart.setScale(0.6,0.6);
 
@@ -124,18 +188,52 @@ public:
 		ball.setPosition(window.getSize().x / 2, window.getSize().y - 30);
 		ball.setRadius(10);
 
-		block.setPosition(window.getSize().x / 2, window.getSize().y / 2);
-		block.setSize(sf::Vector2f(40.0f, 40.0f));
-		block.setOrigin(20.0f, 20.0f); // хардкод?
-		block.setRotation(30);
+        //blocks.push_back(block_body(550, 260, 120.0f, 40.0f, 0.0f));
+        // blocks.push_back(block_body(670, 260, 120.0f, 40.0f, 0.0f));
+
+        const unsigned cols = 8;
+        const unsigned rows = 8;
+
+        bool map[cols][rows] = {
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0}
+        };
+
+        const float height = 400 / rows;
+        const float width = 400 / cols;
+        const float space = 5;
+        const float start_x = 250;
+        const float start_y = 200;
+
+        for(int i = 0; i < rows; i++) {
+            for(int j = 0; j < cols; j++){
+                if (map[i][j]) {
+                    blocks.push_back(block_body(
+                            start_x + j * width + j * space,
+                            start_y + i * height + i * space,
+                            width,
+                            height,
+                            0.0f
+                    ));
+                }
+            }
+        }
 
 	}
 
-	void draw(const sf::Vector2f& player_bottom_coords, const sf::Vector2f& player_top_coords,
-			  const sf::Vector2f& ball_coords, bool canEarseBlock, bool connection, unsigned int bot_lives = 3,
-			  unsigned int top_lives = 3, unsigned int bot_score = 0, unsigned int top_score = 0) {
-		window.clear();
-		window.draw(background);
+
+    void draw(const sf::Vector2f& player_bottom_coords, const sf::Vector2f& player_top_coords,
+			  const sf::Vector2f& ball_coords, int block_to_delete, bool connection, unsigned int bot_lives = 3,
+              unsigned int top_lives = 3, unsigned int bot_score = 0, unsigned int top_score = 0)
+    {
+        window.clear();
+        window.draw(background);
 
 		if (connection == 0) {
 
@@ -145,11 +243,20 @@ public:
 			window.draw(conect);
 		}
 
-		player_bottom.setPosition(player_bottom_coords);
-		player_top.setPosition(player_top_coords);
-		ball.setPosition(ball_coords);
+        std::cout << block_to_delete << std::endl;
 
+        player_bottom.setPosition(player_bottom_coords);
+        player_top.setPosition(player_top_coords);
+        ball.setPosition(ball_coords);
 
+        for (auto it = blocks.begin(); it != blocks.end(); it++) {
+            it->draw(window);
+        }
+
+        if(block_to_delete != -1) {
+            // std::cout << "Aww! " << block_to_delete << std::endl;
+            blocks[block_to_delete].kick();
+        }
 
 		for (int i = 0; i < bot_lives; i++){
 			heart.setColor(sf::Color::Blue);
@@ -212,29 +319,31 @@ public:
 
 class client {
 private:
-	unsigned my_number;
+    sf::Clock clock;
+    float dt;
+
+    unsigned my_number;
 	bool connection;
-	unsigned int key_move, key_action;
+    unsigned int key_move, key_action;
 
-	graphics_scene graphics;
+    graphics_scene graphics;
 
-	sf::TcpSocket socket;//программный интерфейс для обеспечения обмена данными между процессами
-	sf::Packet INPUT;	//Для осуществления пакетной передачи дынных
+    sf::TcpSocket socket;//программный интерфейс для обеспечения обмена данными между процессами
+    sf::Packet INPUT;	//Для осуществления пакетной передачи дынных
 	sf::Packet OUTPUT;
 
-	sf::Vector2f player_bottom_position;
-	sf::Vector2f player_top_position;
-	sf::Vector2f ball_position;
+    data_from_server from_server;
 
-	bool canEarseBlock;
+    sf::Vector2f player_bottom_position;
+    sf::Vector2f player_top_position;
+    sf::Vector2f ball_position;
+    sf::Vector2f ball_speed;
 
-	/*
-	float x_bottom_player, y_bottom_player;
-	float x_top_player, y_top_player;
-	float x_ball, y_ball;
-	*/
+    int blockToDelete;
 
-	/* еще инфа о блоках будет */
+    bool playerKicked;
+
+    /* еще инфа о блоках будет */
 
 public:
 	client(sf::RenderWindow& window) : graphics(window), key_move(0), key_action(0)
@@ -268,26 +377,35 @@ public:
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
 			key_action = 1;
 
-		std::cout << "key_move: " << key_move << ", key_action: " << key_action << std::endl;
+		// std::cout << "key_move: " << key_move << ", key_action: " << key_action << std::endl;
 		OUTPUT << my_number << key_move << key_action;
 		socket.send(OUTPUT);
 		OUTPUT.clear();
 
-		if (socket.receive(INPUT) == sf::Socket::Done){
-			std::cout << "Packet recieved"<< std::endl;
-			INPUT >> connection;
-			INPUT >> player_bottom_position.x >> player_bottom_position.y;
-			INPUT >> player_top_position.x >> player_top_position.y;
-			INPUT >> ball_position.x >> ball_position.y;
-			INPUT >> canEarseBlock;
+        dt = clock.getElapsedTime().asSeconds();
+        clock.restart();
 
-			std::cout << "player bottom: (" << player_bottom_position.x << ", " << player_bottom_position.y << ")" << std::endl;
-			std::cout << "player top: (" << player_top_position.x << ", " << player_top_position.y << ")" << std::endl;
-			std::cout << "ball: (" << ball_position.x << ", " << ball_position.y << ")" << std::endl;
+        if (socket.receive(INPUT) == sf::Socket::NotReady) {
+            graphics.draw(player_bottom_position, player_top_position, ball_position + ball_speed * dt, -1, connection);
+        } else {
+			// std::cout << "Packet recieved"<< std::endl;
+            INPUT >> from_server;
 
-			graphics.draw(player_bottom_position, player_top_position, ball_position, canEarseBlock, connection);
+            connection              = from_server.connection;
+            player_bottom_position  = from_server.player_bottom_coords;
+            player_top_position     = from_server.player_top_coords;
+            ball_position           = from_server.ball_coords;
+            ball_speed              = from_server.ball_speed;
+            blockToDelete           = from_server.broken_block;
+            playerKicked            = from_server.isPlayerKicked;
 
-		} else graphics.draw_er_con();
+        	// std::cout << "player bottom: (" << player_bottom_position.x << ", " << player_bottom_position.y << ")" << std::endl;
+        	// std::cout << "player top: (" << player_top_position.x << ", " << player_top_position.y << ")" << std::endl;
+        	// std::cout << "ball: (" << ball_position.x << ", " << ball_position.y << ")" << std::endl;
+
+			graphics.draw(player_bottom_position, player_top_position, ball_position, blockToDelete, connection);
+
+		}
 
 		sleep(sf::milliseconds(10));
 	}
@@ -316,637 +434,752 @@ public:
  *
  */
 
+// каждому телу соответствует свой собственный id в зависимотси от рода
+// 1 - платформа нижняя, 2 - платформа верхняя, 3 - шарик, 4 - блок, 5 - стенка
+
+
+const b2Vec2 ball_default_speed(0.0f, -9.0f);
+const b2Vec2 player_default_speed(15.0f, 0.0f);
 
 class physics_scene {
 private:
-	b2World world;
 
-	class blocksKickListener : public b2ContactListener {
-	public:
-		void BeginContact(b2Contact* contact) { }
+    enum object_type {
+        player_bottom_id = 1,
+        player_top_id,
+        ball_id,
+        block_id,
+        border_id
+    };
 
-		void EndContact(b2Contact* contact) {
-			std::cout << "I'm working" << std::endl;
+    b2World world;
 
-			physic_body* bodyUserData = static_cast<physic_body*>(contact->GetFixtureA()->GetBody()->GetUserData());
+    class blocksKickListener : public b2ContactListener {
+    public:
+        // callback для соударений
+        // используем только EndContact, так как уничтожение блоков будет производиться уже после отлёта шарика
 
-			std::cout << bodyUserData->getId() << std::endl;
-			if ( bodyUserData->getId() == 4 ) {
-				std::cout << "Fir!" << std::endl;
-				reinterpret_cast<physic_block*>(bodyUserData)->setKicked();
-			}
+        void EndContact(b2Contact* contact) {
+            physic_body* bodyUserData_A = reinterpret_cast<physic_body *>(contact->GetFixtureA()->GetBody()->GetUserData());
+            physic_body* bodyUserData_B = reinterpret_cast<physic_body *>(contact->GetFixtureB()->GetBody()->GetUserData());
 
-			bodyUserData = static_cast<physic_block*>(contact->GetFixtureB()->GetBody()->GetUserData());
-			std::cout << bodyUserData->getId() << std::endl;
-			if ( bodyUserData->getId() == 4 ) {
-				std::cout << "Fir!" << std::endl;
-				reinterpret_cast<physic_block*>(bodyUserData)->setKicked();
-			}
-		}
-	};
+            if ( bodyUserData_A->getId() == 4 ) {
+                reinterpret_cast<physic_block *>(bodyUserData_A)->setKicked();
+            }
+
+            if ( bodyUserData_B->getId() == 4 ) {
+                reinterpret_cast<physic_block *>(bodyUserData_B)->setKicked();
+            }
+
+            if ( bodyUserData_A->getId() == 1 or bodyUserData_A->getId() == 2 ) {
+                reinterpret_cast<physic_player *>(bodyUserData_A)->setKicked();
+            }
+
+            if ( bodyUserData_B->getId() == 1 or bodyUserData_B->getId() == 2 ) {
+                reinterpret_cast<physic_player *>(bodyUserData_B)->setKicked();
+            }
+        }
+    };
 
 	blocksKickListener listener;
 
-	class physic_body {
-	private:
-		int id;
+    class physic_body {
+        protected:
+            b2World& world;
 
-	public:
-		physic_body(int id) : id(id) {}
+        private:
+            object_type id;
 
-		int getId() const {
-			return id;
-		}
+        public:
+            physic_body(b2World& world, object_type id) : world(world), id(id) {}
 
-		virtual ~physic_body() {}
-	};
+            object_type getId() const {
+                return id;
+            }
 
-	class physic_ball: public physic_body {
-	private:
-		b2World& world;
-		b2Body* ball;
-		b2Vec2 ball_speed;
+            virtual ~physic_body() {}
+    };
 
-		b2Body* createBall(const float play_pos_x, const float play_pos_y, const bool is_top) {
-			b2Body* new_ball;
+    class physic_ball: public physic_body {
+        private:
+            b2Body* ball;
+            b2Vec2 ball_speed;
+            bool is_launched;
 
-			b2BodyDef ball_def;
-			ball_def.type = b2_dynamicBody;
+            b2Body* createBall(const float play_pos_x, const float play_pos_y, const bool is_top) {
+                b2Body* new_ball;
 
-			if(is_top) {
-				ball_def.position.Set(play_pos_x, play_pos_y + 5 / PTM); // тут еще остается ptm TODO
-				// TODO: сделать нормальное изменение скорости
-				ball_speed = b2Vec2(ball_speed.x, fabsf(ball_speed.y));
-			} else {
-				ball_def.position.Set(play_pos_x, play_pos_y - 15 / PTM); // тут еще остается ptm
-				ball_speed = b2Vec2(ball_speed.x, -fabsf(ball_speed.y));
-			}
+                b2BodyDef ball_def;
+                ball_def.type = b2_dynamicBody;
 
-			new_ball = world.CreateBody(&ball_def);
+                if(is_top) {
+                    ball_def.position.Set(play_pos_x, play_pos_y + 5 / PTM); // тут еще остается ptm TODO
+                    // TODO: сделать нормальное изменение скорости
+                    ball_speed = b2Vec2(ball_speed.x, fabsf(ball_speed.y));
+                } else {
+                    ball_def.position.Set(play_pos_x, play_pos_y - 15 / PTM); // тут еще остается ptm
+                    ball_speed = b2Vec2(ball_speed.x, -fabsf(ball_speed.y));
+                }
 
-			b2CircleShape ball_shape;
-			ball_shape.m_radius = 10/PTM;
+                new_ball = world.CreateBody(&ball_def);
 
-			b2FixtureDef ball_fixture_def;
-			ball_fixture_def.shape = &ball_shape;
-			ball_fixture_def.density = 10.1f;
-			ball_fixture_def.restitution = 1.05f;
-			ball_fixture_def.friction = 0.0f;
+                b2CircleShape ball_shape;
+                ball_shape.m_radius = 10/PTM;
 
-			// из-за особенностей хранения userData
-			new_ball->CreateFixture(&ball_fixture_def);
+                b2FixtureDef ball_fixture_def;
+                ball_fixture_def.shape = &ball_shape;
+                ball_fixture_def.density = 10.1f;
+                ball_fixture_def.restitution = 1.05f;
+                ball_fixture_def.friction = 0.0f;
 
-			new_ball->SetUserData(this);
+                // из-за особенностей хранения userData
+                new_ball->CreateFixture(&ball_fixture_def);
 
-			return new_ball;
-		};
+                new_ball->SetUserData(this);
 
-	public:
-		physic_ball(b2World& world, const float play_pos_x, const float play_pos_y, const b2Vec2& speed)
-				: physic_body(3), world(world), ball_speed(speed) {
-			// false - так как игра всегда начинается с нижнего игрока
-			ball = createBall(play_pos_x, play_pos_y, false);
-		}
+                return new_ball;
+            };
 
-		void restart(const b2Vec2& player_position, const bool is_top) {
-			world.DestroyBody(ball);
+        public:
+            physic_ball(b2World& world, const float play_pos_x, const float play_pos_y)
+                    : physic_body(world, ball_id), ball_speed(ball_default_speed) {
+                // последний параметр определяет где находится шарик - у верхнего (true) или у нижнего (false) игрока
+                ball = createBall(play_pos_x, play_pos_y, false);
 
-			ball = createBall(player_position.x, player_position.y, is_top);
-		}
+            }
 
-		void lauch() {
-			// std::cout << ball << std::endl;
-			ball->SetLinearVelocity(ball_speed);
-		}
+            void restart(const b2Vec2& player_position, const bool is_top) {
+                world.DestroyBody(ball);
+                is_launched = false;
 
-		void move_with_player(const b2Vec2& speed, const unsigned int dest) {
-			switch (dest) {
-				case 2: {
-					ball->SetLinearVelocity(speed);
-					break;
-				}
+                ball = createBall(player_position.x, player_position.y, is_top);
+            }
 
-				case 1: {
-					ball->SetLinearVelocity(-speed);
-					break;
-				}
+            void lauch() {
+                ball->SetLinearVelocity(ball_speed);
+                is_launched = true;
+            }
 
-					// дописал default, ибо не по православному без него
-				case 0:
-				default: {
-					ball->SetLinearVelocity(b2Vec2(0,0));
-					break;
-				}
-			}
-		}
+            void move_with_player(const b2Vec2& speed, const unsigned int dest) {
+                switch (dest) {
+                    case 2: {
+                        ball->SetLinearVelocity(speed);
+                        break;
+                    }
 
-		const b2Vec2 giveCoords() const {
-			return ball->GetPosition();
-		}
+                    case 1: {
+                        ball->SetLinearVelocity(-speed);
+                        break;
+                    }
 
-		~physic_ball() { world.DestroyBody(ball); }
-	};
+                    // дописал default, ибо не по православному без него
+                    case 0:
+                    default: {
+                        ball->SetLinearVelocity(b2Vec2(0,0));
+                        break;
+                    }
+                }
+            }
 
-	class physic_player: public physic_body {
-	private:
-		b2World& world;
-		// указатели юзаем из-за особенностей либы (методы World принимают в качестве аргументов указатели и ничего больше)
-		b2Body* player;
-		b2Vec2 player_speed;
+            const b2Vec2& giveCoords() const {
+                return ball->GetPosition();
+            }
 
-	public:
-		physic_player(b2World& world, const float start_x, const float start_y, const b2Vec2& speed, const int id)
-				: physic_body(id), world(world), player_speed(speed) {
-			b2BodyDef player_def;
-			player_def.type = b2_kinematicBody;
-			player_def.position.Set((start_x - 10) / PTM, (start_y - 10) / PTM);
-			player = world.CreateBody(&player_def);
+            const b2Vec2 giveSpeed() const {
+                return ball->GetLinearVelocity();
+            }
 
-			b2PolygonShape player_shape;
-			player_shape.SetAsBox(50.0f/PTM, 5.0f/PTM);
+            bool isLaunched() const {
+                return is_launched;
+            }
 
-			b2FixtureDef player_fixture_def;
-			player_fixture_def.shape = &player_shape;
-			player_fixture_def.density = 10.1f;
-			player_fixture_def.restitution = 1;
-			player_fixture_def.friction = 0.0f;
+            ~physic_ball() { world.DestroyBody(ball); }
+    };
 
-			player->CreateFixture(&player_fixture_def);
-			player->SetUserData(this);
-		}
+    class physic_player: public physic_body {
+        private:
+            // указатели юзаем из-за особенностей либы (методы World принимают в качестве аргументов указатели и ничего больше)
+            b2Body* player;
+            b2Vec2 player_speed;
+            bool isKicked;
 
-		void stop() {
-			player->SetLinearVelocity(b2Vec2(0,0));
-		}
+        public:
+            physic_player(b2World& world, const float start_x, const float start_y, const object_type id)
+                    : physic_body(world, id), player_speed(player_default_speed) {
+                b2BodyDef player_def;
+                player_def.type = b2_kinematicBody;
+                player_def.position.Set((start_x - 10) / PTM, (start_y - 10) / PTM);
+                player = world.CreateBody(&player_def);
 
-		void move(const unsigned int dest) {
-			switch (dest) {
-				case 2: {
-					player->SetLinearVelocity(player_speed);
-					break;
-				}
+                b2PolygonShape player_shape;
+                player_shape.SetAsBox(50.0f/PTM, 5.0f/PTM);
 
-				case 1: {
-					player->SetLinearVelocity(-player_speed);
-					break;
-				}
+                b2FixtureDef player_fixture_def;
+                player_fixture_def.shape = &player_shape;
+                player_fixture_def.density = 10.1f;
+                player_fixture_def.restitution = 1;
+                player_fixture_def.friction = 0.0f;
 
-				default:
-				case 0: {
-					stop();
-					break;
-				}
-			}
-		}
+                player->CreateFixture(&player_fixture_def);
+                player->SetUserData(this);
+            }
+
+            void stop() {
+                player->SetLinearVelocity(b2Vec2(0,0));
+            }
+
+            void move(const unsigned int dest) {
+                switch (dest) {
+                    case 2: {
+                        player->SetLinearVelocity(player_speed);
+                        break;
+                    }
+
+                    case 1: {
+                        player->SetLinearVelocity(-player_speed);
+                        break;
+                    }
+
+                    default:
+                    case 0: {
+                        stop();
+                        break;
+                    }
+                }
+            }
+
+            const b2Vec2 getSpeed() const {
+                return player->GetLinearVelocity();
+            }
+
+            void setKicked() {
+                isKicked = true;
+            }
+
+            bool checkKicked() {
+                if(isKicked) {
+                    isKicked = false;
+                    return true;
+                }
+
+                return false;
+            }
+
+            const b2Vec2& giveCoords() const {
+                return player->GetPosition();
+            }
+
+            ~physic_player() { world.DestroyBody(player); }
+    };
+
+    class physic_border : public physic_body {
+        private:
+            b2Body* border;
+
+        public:
+
+            physic_border(b2World& world, const float pos_x, const float pos_y, const float size_x, const float size_y)
+                    : physic_body(world, border_id) {
+                b2BodyDef border_def;
+                b2PolygonShape border_shape;
+
+                border_def.position.Set((pos_x - 10)/PTM, (pos_y - 10)/PTM);
+                border_shape.SetAsBox(size_x/PTM, size_y/PTM);
+                border = world.CreateBody(&border_def);
+                border->CreateFixture(&border_shape, 0.0f);
+
+                border->SetUserData(this);
+            }
+
+            ~physic_border() { world.DestroyBody(border); }
+
+    };
+
+    class physic_block : public physic_body {
+    private:
+        b2Body* block;
+        bool is_kicked;
+        int number;
+
+    public:
+        physic_block(
+                b2World& world,
+                const float pos_x, const float pos_y,
+                const float size_x, const float size_y,
+                const float angle, const int number
+        ) : physic_body(world, block_id), is_kicked(false), number(number) {
+                b2BodyDef block_def;
+                b2PolygonShape block_shape;
+
+                block_def.position.Set((pos_x)/PTM, (pos_y)/PTM);
+                block_def.angle = angle / DEG;
+                block_shape.SetAsBox(size_x / 2 / PTM, size_y / 2 / PTM);
+                block = world.CreateBody(&block_def);
+                block->CreateFixture(&block_shape, 0.0f);
+
+                block->SetUserData(this);
+        }
 
 
-		const b2Vec2& getSpeed() const {
-			return player_speed;
-		}
+        // удаление блока, если он был задет;
+        // если блок не был ударен, возвращает -1 (неудача)
+        // если был, возвращает номер блока в массиве
+        int try_kick() {
+            if(is_kicked) {
+                block->SetActive(0);
+                is_kicked = false;
+                return number;
+            }
 
-		const b2Vec2 giveCoords() const {
-			return player->GetPosition();
-		}
+            return -1;
+        }
 
-		~physic_player() { world.DestroyBody(player); }
-	};
+        void setKicked() {
+            is_kicked = true;
+        }
 
-	class physic_border : public physic_body {
-	private:
-		b2World& world;
-		b2Body* border;
-
-	public:
-
-		physic_border(b2World& world, const float pos_x, const float pos_y, const float size_x, const float size_y)
-				: physic_body(5), world(world) {
-			b2BodyDef border_def;
-			b2PolygonShape border_shape;
-
-			border_def.position.Set((pos_x - 10)/PTM, (pos_y - 10)/PTM);
-			border_shape.SetAsBox(size_x/PTM, size_y/PTM);
-			border = world.CreateBody(&border_def);
-			border->CreateFixture(&border_shape, 0.0f);
-
-			border->SetUserData(this);
-		}
-
-		~physic_border() { world.DestroyBody(border); }
-
-	};
-
-	class physic_block : public physic_body {
-	private:
-		b2World& world;
-		b2Body* block;
-		bool is_kicked;
-		int number;
-
-	public:
-		physic_block(
-				b2World& world,
-				const float pos_x, const float pos_y,
-				const float size_x, const float size_y,
-				const float angle, const int number
-		) : physic_body(4), world(world), is_kicked(false), number(number) {
-			b2BodyDef block_def;
-			b2PolygonShape block_shape;
-
-			block_def.position.Set((pos_x - 10)/PTM, (pos_y - 10)/PTM);
-			block_def.angle = angle / DEG;
-			block_shape.SetAsBox(size_x / PTM, size_y / PTM);
-			block = world.CreateBody(&block_def);
-			block->CreateFixture(&block_shape, 0.0f);
-
-			block->SetUserData(this);
-		}
-
-		void try_kick() {
-			if(is_kicked) {
-				std::cout << "Tried :c" << std::endl;
-				block->SetActive(0);
-			}
-		}
-
-		void setKicked() {
-			is_kicked = true;
-		}
-
-		~physic_block() { }
-	};
+        ~physic_block() { }
+    };
 
 
-	/* ------ Подвижные объекты ------ */
-	physic_ball ball;
+    /* ------ Подвижные объекты ------ */
+    physic_ball ball;
 
-	physic_player player_bottom;
+    physic_player player_bottom;
 
-	physic_player player_top;
+    physic_player player_top;
 
 
-	/* ----- Статические объекты ----- */
-	physic_border right_border;
+    /* ----- Статические объекты ----- */
+    physic_border right_border;
 
-	physic_border left_border;
+    physic_border left_border;
 
-	// делаем двух игроков => отключаем верхний барьер
-	// physic_border top_border;
+    // делаем двух игроков => отключаем верхний барьер
+    // physic_border top_border;
 
-	/* ------------ Блоки ------------ */
+    /* ------------ Блоки ------------ */
 
-	std::vector<physic_block*> blocks;
+    std::vector<physic_block*> blocks;
+    int broken_block;
 
-	bool is_launched;
+    bool sound_player;
 
-	int32 velocityIterations = 8;
-	int32 positionIterations = 3;
+    // настройки b2d
+    const int32 velocityIterations = 8;
+    const int32 positionIterations = 3;
 
-	// SFML-ский таймер
-	sf::Clock clock;
-	float dt;
+    // SFML-ский таймер
+    sf::Clock clock;
+    float dt;
 
 
 public:
-	// каждому телу соответствует свой собственный id в зависимотси от рода
-	// 1 - платформа нижняя, 2 - платформа верхняя, 3 - шарик, 4 - блок, 5 - стенка
+    physics_scene(const float window_size_x, const float window_size_y)
+            : world(b2Vec2(0.0f, 0.0f)),
+              ball(world, (window_size_x/ 2), (window_size_y - 35)),
+              player_bottom(world, (window_size_x / 2), (window_size_y - 35), player_bottom_id),
+              player_top(world, (window_size_x / 2), 35, player_top_id),
+              right_border(world, (window_size_x - 10), (window_size_y / 2), 10.0f, window_size_y / 2),
+              left_border(world, 0.0f, (window_size_y / 2), 10.0f, window_size_y / 2)
+    {
+        world.SetContactListener(&listener);
 
-	physics_scene(const float window_size_x, const float window_size_y)
-			: world(b2Vec2(0.0f, 0.0f)),
-			ball(world, (window_size_x/ 2), (window_size_y - 35), b2Vec2(0.0f, -9.0f)),
-			player_bottom(world, (window_size_x / 2), (window_size_y - 35), b2Vec2(15, 0.0f), 1),
-			player_top(world, (window_size_x / 2), 35, b2Vec2(15, 0.0f), 2),
-			right_border(world, (window_size_x - 10), (window_size_y / 2), 10.0f, window_size_y / 2),
-			left_border(world, 0.0f, (window_size_y / 2), 10.0f, window_size_y / 2),
-			// top_border(world, (window_size_x / 2), 0.0f, (window_size_x / 2), 10.0f),
-			// test_block(world, (window_size_x / 2), (window_size_y / 2), 20.0f, 20.0f, 30.0f, 1),
-			is_launched(false)
-	{
-		world.SetContactListener(&listener);
+        const unsigned cols = 8;
+        const unsigned rows = 8;
 
-		blocks.push_back(new physic_block(world, 70, 100, 60.0f, 20.0f, 0.0f, 1));
-		blocks.push_back(new physic_block(world, 910, 100, 60.0f, 20.0f, 0.0f, 2));
-
-		blocks.push_back(new physic_block(world, 190, 140, 60.0f, 20.0f, 0.0f, 3));
-		blocks.push_back(new physic_block(world, 310, 140, 60.0f, 20.0f, 0.0f, 4));
-		blocks.push_back(new physic_block(world, 430, 140, 60.0f, 20.0f, 0.0f, 5));
-		blocks.push_back(new physic_block(world, 550, 140, 60.0f, 20.0f, 0.0f, 6));
-		blocks.push_back(new physic_block(world, 670, 140, 60.0f, 20.0f, 0.0f, 7));
-		blocks.push_back(new physic_block(world, 790, 140, 60.0f, 20.0f, 0.0f, 8));
-
-		blocks.push_back(new physic_block(world, 190, 180, 60.0f, 20.0f, 0.0f, 9));
-		blocks.push_back(new physic_block(world, 430, 180, 60.0f, 20.0f, 0.0f, 10));
-		blocks.push_back(new physic_block(world, 790, 180, 60.0f, 20.0f, 0.0f, 11));
-
-		blocks.push_back(new physic_block(world, 190, 220, 60.0f, 20.0f, 0.0f, 12));
-		blocks.push_back(new physic_block(world, 550, 220, 60.0f, 20.0f, 0.0f, 13));
-		blocks.push_back(new physic_block(world, 790, 220, 60.0f, 20.0f, 0.0f, 14));
-
-		blocks.push_back(new physic_block(world, 190, 260, 60.0f, 20.0f, 0.0f, 15));
-		blocks.push_back(new physic_block(world, 310, 260, 60.0f, 20.0f, 0.0f, 16));
-		blocks.push_back(new physic_block(world, 430, 260, 60.0f, 20.0f, 0.0f, 17));
-		blocks.push_back(new physic_block(world, 550, 260, 60.0f, 20.0f, 0.0f, 18));
-		blocks.push_back(new physic_block(world, 670, 260, 60.0f, 20.0f, 0.0f, 19));
-		blocks.push_back(new physic_block(world, 790, 260, 60.0f, 20.0f, 0.0f, 20));
-
-		blocks.push_back(new physic_block(world, 70, 300, 60.0f, 20.0f, 0.0f, 21));
-		blocks.push_back(new physic_block(world, 910, 300, 60.0f, 20.0f, 0.0f, 22));
-	}
-
-	void analyseKeys(physic_player& player, const unsigned move, const unsigned action) {
-		switch (move) {
-			case 1:
-			case 2: {
-				player.move(move);
-				break;
-			}
-
-			default:
-			case 0: {
-				player.stop();
-				break;
-			}
-		}
-
-		switch (action) {
-			case 1: {
-				if(!is_launched) {
-					is_launched = true;
-					ball.lauch();
-				}
-				break;
-			}
-
-			default: break;
-		}
-	}
+        bool map[cols][rows] = {
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0},
+                {1, 0, 1, 0, 1, 0, 1, 0}
+        };
 
 
-	// костыльная тема
-	void moveBall(physic_player& player, const unsigned move) {
-		switch (move) {
-			case 1:
-			case 2: {
-				if(!is_launched)
-					ball.move_with_player(player.getSpeed(), move);
-				break;
-			}
+        const float height = 400 / rows;
+        const float width = 400 / cols;
+        const float space = 5;
+        const float start_x = 250;
+        const float start_y = 200;
 
-			default:
-			case 0: {
-				if(!is_launched)
-					ball.move_with_player(player.getSpeed(), 0);
-				break;
-			}
-		}
-	}
+        int passaway = 0;
 
-	void calculate(
-			const unsigned int key_bottom_move, const unsigned int key_bottom_action,
-			const unsigned int key_top_move, const unsigned int key_top_action,
-			const int who_lost_the_ball, const int who_leads_the_ball) {
+        for(int i = 0; i < rows; i++) {
+            for(int j = 0; j < cols; j++){
+                if (map[i][j]) {
+                    blocks.push_back(
+                            new physic_block(
+                                    world,
+                                    start_x + j * width + j * space,
+                                    start_y + i * height + i * space,
+                                    width,
+                                    height,
+                                    0.0f,
+                                    (i * 8) + j - passaway
+                            )
+                    );
+                } else {
+                    passaway++;
+                }
+            }
+        }
+    }
 
-		dt = clock.getElapsedTime().asSeconds();
-		clock.restart();
+    void analyseKeys(physic_player& player, const unsigned move, const unsigned action) {
+        switch (move) {
+            case 1:
+            case 2: {
+                player.move(move);
+                break;
+            }
+
+            default:
+            case 0: {
+                player.stop();
+                break;
+            }
+        }
+
+        switch (action) {
+            case 1: {
+                if( !ball.isLaunched() ) {
+                    ball.lauch();
+                }
+                break;
+            }
+
+            default: break;
+        }
+    }
+
+    void moveBall(physic_player& player, const unsigned move) {
+        switch (move) {
+            case 1: {
+                if( !ball.isLaunched() )
+                    ball.move_with_player(-player.getSpeed(), move);
+                break;
+            }
+
+            case 2: {
+                if( !ball.isLaunched() )
+                    ball.move_with_player(player.getSpeed(), move);
+                break;
+            }
+
+            default:
+            case 0: {
+                if( !ball.isLaunched() )
+                    ball.move_with_player(player.getSpeed(), 0);
+                break;
+            }
+        }
+    }
+
+    void calculate(
+            const unsigned int key_bottom_move, const unsigned int key_bottom_action,
+            const unsigned int key_top_move, const unsigned int key_top_action,
+            const int who_lost_the_ball, const int who_leads_the_ball)
+    {
+
+        dt = clock.getElapsedTime().asSeconds();
+        clock.restart();
+
+        broken_block = -1;
+
+        switch (who_lost_the_ball) {
+            case 1: {
+                // первый параметр передает координаты игрока, потерявшего шарик
+                // второй параметр - является ли положение верхним
+                ball.restart(player_bottom.giveCoords(), false);
+                break;
+            }
+
+            case 2: {
+                ball.restart(player_top.giveCoords(), true);
+                break;
+            }
+
+            default: break;
+        }
+
+        analyseKeys(player_bottom, key_bottom_move, key_bottom_action);
+        analyseKeys(player_top, key_top_move, key_top_action);
+
+        if (who_leads_the_ball == 1) {
+            moveBall(player_bottom, key_bottom_move);
+        } else {
+            moveBall(player_top, key_top_move);
+        }
+
+        int buf;
+        for (auto it = blocks.begin(); it != blocks.end(); it++) {
+            buf = (*it)->try_kick();
+            if (buf != -1) {
+                broken_block = buf;
+            }
+        }
+
+        world.Step(dt, velocityIterations, positionIterations);
 
 
-		switch (who_lost_the_ball) {
-			case 1: {
-				is_launched = false;
-				// первый параметр передает координаты игрока, потерявшего шарик
-				// второй параметр - является ли положение верхним
-				ball.restart(player_bottom.giveCoords(), false);
-				break;
-			}
+        //std::cout << dt << std::endl;
+    }
 
-			case 2: {
-				is_launched = false;
-				ball.restart(player_top.giveCoords(), true);
-				break;
-			}
+    const sf::Vector2f givePlayerBottomCoords() const {
+        b2Vec2 coords = player_bottom.giveCoords();
+        return sf::Vector2f(coords.x * PTM, coords.y * PTM);
+    }
 
-			default: break;
-		}
+    const sf::Vector2f givePlayerTopCoords() const {
+        b2Vec2 coords = player_top.giveCoords();
+        return sf::Vector2f(coords.x * PTM, coords.y * PTM);
+    }
 
-		analyseKeys(player_bottom, key_bottom_move, key_bottom_action);
-		analyseKeys(player_top, key_top_move, key_top_action);
+    const sf::Vector2f giveBallCoords() const {
+        b2Vec2 coords = ball.giveCoords();
+        return sf::Vector2f(coords.x * PTM, coords.y * PTM - 10);
+    }
 
-		if (who_leads_the_ball == 1) {
-			moveBall(player_bottom, key_bottom_move);
-		} else {
-			moveBall(player_top, key_top_move);
-		}
+    const sf::Vector2f giveBallSpeed() const {
+        b2Vec2 coords = ball.giveSpeed();
+        return sf::Vector2f(coords.x * PTM, coords.y * PTM);
+    }
 
-		for(auto it = blocks.begin(); it != blocks.end(); it++) {
-			(*it)->try_kick();
-		}
+    const int getBrokenBlock() {
+        return broken_block;
+    }
 
-		world.Step(dt, velocityIterations, positionIterations);
+    bool checkPlayerKicked() {
+        return player_top.checkKicked() || player_bottom.checkKicked();
+    }
 
-
-		//std::cout << dt << std::endl;
-	}
-
-	const sf::Vector2f givePlayerBottomCoords() const {
-		b2Vec2 coords = player_bottom.giveCoords();
-		return sf::Vector2f(coords.x * PTM, coords.y * PTM);
-	}
-
-	const sf::Vector2f givePlayerTopCoords() const {
-		b2Vec2 coords = player_top.giveCoords();
-		return sf::Vector2f(coords.x * PTM, coords.y * PTM);
-	}
-
-	const sf::Vector2f giveBallCoords() const {
-		b2Vec2 coords = ball.giveCoords();
-		return sf::Vector2f(coords.x * PTM, coords.y * PTM);
-	}
-
-	~physics_scene() {
-		for(auto it = blocks.begin(); it != blocks.end(); it++) {
-			delete(*it);
-		}
-	}
+    ~physics_scene() {
+        for(auto it = blocks.begin(); it != blocks.end(); it++) {
+            delete(*it);
+        }
+    }
 };
 
 // логика игры
 class logic_world {
 private:
 
-	class logic_player {
-	private:
-		sf::Vector2f position;
-		int score, lives;
+    class logic_player {
+        private:
+            sf::Vector2f position;
+            int score, lives;
 
-	public:
-		logic_player(const float x_start, const float y_start) : position(x_start, y_start), score(0), lives(3) { }
+        public:
+            logic_player(const float x_start, const float y_start) : position(x_start, y_start), score(0), lives(3) { }
 
-		void setPosition(sf::Vector2f new_position) {
-			position = new_position;
-		}
+            void setPosition(sf::Vector2f new_position) {
+                position = new_position;
+            }
 
-		const sf::Vector2f getPosition() const {
-			return position;
-		}
+            const sf::Vector2f getPosition() const {
+                return position;
+            }
 
-		void setScore(const int new_score) {
-			score = new_score;
-		}
+            void setScore(const int new_score) {
+                score = new_score;
+            }
 
-		int getScore() const {
-			return score;
-		}
+            int getScore() const {
+                return score;
+            }
 
-		void setLives(const int new_lives) {
-			lives = new_lives;
-		}
+            void setLives(const int new_lives) {
+                lives = new_lives;
+            }
 
-		int getLives() const {
-			return lives;
-		}
+            int getLives() const {
+                return lives;
+            }
 
-		void operator ++ () {
-			score++;
-		}
+            void operator ++ () {
+                score++;
+            }
 
 		~logic_player() {}
 	};
 
-	class logic_ball {
-	private:
-		sf::Vector2f position;
+    class logic_ball {
+        private:
+            sf::Vector2f position;
 
-	public:
+        public:
 
-		logic_ball(const float start_x, const float start_y) : position(start_x, start_y) { }
+            logic_ball(const float start_x, const float start_y) : position(start_x, start_y) { }
 
-		void setPosition(sf::Vector2f new_position) {
-			position = new_position;
-		}
+            void setPosition(sf::Vector2f new_position) {
+                position = new_position;
+            }
 
-		const sf::Vector2f getPosition() const {
-			return position;
-		}
+            const sf::Vector2f getPosition() const {
+                return position;
+            }
 
-		~logic_ball() { }
-	};
+            ~logic_ball() { }
+    };
 
-	// (1) первый игрок - снизу
-	logic_player player_bottom;
+    class logic_block {
+    private:
+        enum block_type {
+            simple = 0,
+            rocket,
+            slow_player,
+            fast_player,
+            freeze_enemy,
+            fast_ball
+        };
 
-	// (2) второй игрок - сверху
-	logic_player player_top;
+        bool is_kicked;
+        int number;
+        block_type type;
 
-	// мячик
-	logic_ball ball;
+    public:
+        logic_block(const int number, block_type type = simple): number(number), type(type) { }
 
-	/*
-	 * Место под логические блоки
-	 */
+        void setKicked() {
+            is_kicked = true;
+        }
 
-	// Флаг, содержащий информацию о том, кто потерял шарик, и (== 0) если шарик не потерян
-	int who_lost_the_ball;
-	int who_leads_the_ball;
+        int getNumber() const {
+            return number;
+        }
 
-	physics_scene physics;
+        ~logic_block() {}
+    };
 
-	bool isBlockExist;
+    // (1) первый игрок - снизу
+    logic_player player_bottom;
 
-	const float bottom_border;
+    // (2) второй игрок - сверху
+    logic_player player_top;
+
+    // мячик
+    logic_ball ball;
+
+    std::vector<logic_block> blocks;
+    int broken_block;
+
+    // Флаг, содержащий информацию о том, кто потерял шарик, и (== 0) если шарик не потерян
+    int who_lost_the_ball;
+    int who_leads_the_ball;
+
+    physics_scene physics;
+
+    const float bottom_border;
 
 
 public:
-	logic_world(const float window_size_x,const float window_size_y)
-			: player_bottom(window_size_x / 2.0f, window_size_y - 25.0f),
-			player_top(window_size_x / 2.0f, window_size_y - 25.0f),
-			ball(window_size_x / 2.0f, window_size_y - 35.0f),
-			physics(window_size_x, window_size_y),
-			who_lost_the_ball(0),
-			who_leads_the_ball(1),
-			isBlockExist(1),
-			bottom_border(window_size_y) { }
+    logic_world(const float window_size_x,const float window_size_y)
+            : player_bottom(window_size_x / 2.0f, window_size_y - 25.0f),
+              player_top(window_size_x / 2.0f, window_size_y - 25.0f),
+              ball(window_size_x / 2.0f, window_size_y - 35.0f),
+              physics(window_size_x, window_size_y),
+              who_lost_the_ball(0),
+              who_leads_the_ball(1),
+              bottom_border(window_size_y)
+    {
+        blocks.push_back(logic_block(1));
+        blocks.push_back(logic_block(2));
+    }
 
-	void update(
-			const unsigned int key_bottom_move, unsigned int key_bottom_action,
-			const unsigned int key_top_move, unsigned int key_top_action
-	) {
+    void update(
+            const unsigned int key_bottom_move, unsigned int key_bottom_action,
+            const unsigned int key_top_move, unsigned int key_top_action
+    ) {
 
-		// шарик ушел за пределы поля
-		if (ball.getPosition().y > bottom_border) {
-			player_bottom.setLives(player_bottom.getLives() - 1);
-			who_lost_the_ball = 1;
-		}
+        // шарик ушел за пределы поля
+        if (ball.getPosition().y > bottom_border) {
+            player_bottom.setLives(player_bottom.getLives() - 1);
+            who_lost_the_ball = 1;
+        }
 
-		if (ball.getPosition().y < 0) {
-			player_top.setLives(player_top.getLives() - 1);
-			who_lost_the_ball = 2;
-		}
+        if (ball.getPosition().y < 0) {
+            player_top.setLives(player_top.getLives() - 1);
+            who_lost_the_ball = 2;
+        }
 
-		// жизней меньше нуля
-		if (player_bottom.getLives() < 0) {
-			// первый проиграл
-		}
-
-
-		if (player_top.getLives() < 0) {
-			// второй проиграл
-		}
-
-		/*
-		 * Тут должен располагаться цикл, в котором будем проверять, не сбили ли какой-то блок
-		 */
-
-		// обрабатываем кажатые клавишы с учетом того, у кого шарик - у верхнего или у нижнего
-		if (who_leads_the_ball == 1) {
-			// если шарик у нижнего, верхний не может его запустить
-			if(key_top_action == 1)
-				key_top_action = 0;
-
-		} else {
-			if(key_bottom_action == 1)
-				key_bottom_action = 0;
-
-		}
-
-		physics.calculate(key_bottom_move, key_bottom_action,
-						  key_top_move, key_top_action,
-						  who_lost_the_ball, who_leads_the_ball);
+        // жизней меньше нуля
+        if (player_bottom.getLives() < 0) {
+            // первый проиграл
+        }
 
 
-		isBlockExist = false;
+        if (player_top.getLives() < 0) {
+            // второй проиграл
+        }
 
-		// шарик отдается тому, кто его упустил
-		if(who_lost_the_ball != 0)
-			who_leads_the_ball = who_lost_the_ball;
 
-		// обработали потерю шарика, можем вернуть переменной исходное значение
-		who_lost_the_ball = 0;
+        for(auto it_bl = blocks.begin(); it_bl != blocks.end(); it_bl++)
+            if(it_bl->getNumber() == broken_block)
+                it_bl->setKicked();
 
-		player_bottom.setPosition(physics.givePlayerBottomCoords());
-		player_top.setPosition(physics.givePlayerTopCoords());
-		ball.setPosition(physics.giveBallCoords());
+        // обрабатываем кажатые клавишы с учетом того, у кого шарик - у верхнего или у нижнего
+        if (who_leads_the_ball == 1) {
+            // если шарик у нижнего, верхний не может его запустить
+            if(key_top_action == 1)
+                key_top_action = 0;
 
-		sleep(sf::milliseconds(10));
-	}
+        } else {
+            if(key_bottom_action == 1)
+                key_bottom_action = 0;
+
+        }
+
+        physics.calculate(key_bottom_move, key_bottom_action,
+                          key_top_move, key_top_action,
+                          who_lost_the_ball, who_leads_the_ball);
+
+        // шарик отдается тому, кто его упустил
+        if(who_lost_the_ball != 0)
+            who_leads_the_ball = who_lost_the_ball;
+
+        // обработали потерю шарика, можем вернуть переменной исходное значение
+        who_lost_the_ball = 0;
+
+        player_bottom.setPosition(physics.givePlayerBottomCoords());
+        player_top.setPosition(physics.givePlayerTopCoords());
+        ball.setPosition(physics.giveBallCoords());
+
+        broken_block = physics.getBrokenBlock();
+
+        sleep(sf::milliseconds(10));
+    }
 
 	const sf::Vector2f givePlayerTopCoords() const {
-		// WARNING: меняю источник - теперь тянет не из physics, а из этого класса
 		return player_top.getPosition();
 	}
 
-	const sf::Vector2f givePlayerBottomCoords() const {
-		// WARNING: меняю источник - теперь тянет не из physics, а из этого класса
-		return player_bottom.getPosition();
-	}
+    const sf::Vector2f givePlayerBottomCoords() const {
+        return player_bottom.getPosition();
+    }
 
 	const sf::Vector2f giveBallCoords() const {
 		return ball.getPosition();
 	}
 
-	const bool canEarseBlock() {
-		return !isBlockExist;
-	};
+    const sf::Vector2f giveBallSpeed() const {
+        return physics.giveBallSpeed();
+    }
 
-	~logic_world() { }
+    int getBrokenBlocks() {
+        int buf = broken_block;
+        broken_block = -1;
+        return buf;
+    }
+
+    bool checkPlayerKicked() {
+        return physics.checkPlayerKicked();
+    }
+
+    ~logic_world() { }
 };
 
 struct DATA{
@@ -964,23 +1197,25 @@ class server {
 private:
 	logic_world serv_world;
 
-	sf::TcpListener listener;
+    sf::TcpListener listener;
 	sf::TcpSocket socket_1; //программный интерфейс для обеспечения обмена данными между процессами
-	sf::TcpSocket socket_2;
+    sf::TcpSocket socket_2;
 
-	sf::Packet INPUT;
-	sf::Packet OUTPUT;
+    sf::Packet INPUT;
+    sf::Packet OUTPUT;
 	bool connection;
 	//Для осуществления пакетной передачи дынных
 
 	DATA data;
 
-	/* unsigned int key_bottom_move;
-	 unsigned int key_bottom_action;
-	 unsigned int key_top_move;
-	 unsigned int key_top_action;
-	 unsigned num;
- */
+    data_from_server to_client;
+   /* unsigned int key_bottom_move;
+    unsigned int key_bottom_action;
+    unsigned int key_top_move;
+    unsigned int key_top_action;
+
+    unsigned num;
+*/
 
 public:
 	server(const unsigned short port) : serv_world(1024,768) {
@@ -1030,29 +1265,29 @@ public:
 		} else data.top_connect = 0;
 	}
 
-
 	void output() {
 		if (data.bot_connect == 1 && data.top_connect == 1) {
-			serv_world.update(data.key_bottom_move, data.key_bottom_action, data.key_top_move, data.key_top_action);
+            serv_world.update(data.key_bottom_move, data.key_bottom_action, data.key_top_move, data.key_top_action);
 
-			connection = 1;
+            to_client.player_bottom_coords = serv_world.givePlayerBottomCoords();
+            to_client.player_top_coords = serv_world.givePlayerTopCoords();
+            to_client.ball_coords = serv_world.giveBallCoords();
+            to_client.ball_speed = serv_world.giveBallSpeed();
+            to_client.broken_block = serv_world.getBrokenBlocks();
+            to_client.isPlayerKicked = serv_world.checkPlayerKicked();
 
-			OUTPUT << connection;
-			OUTPUT << serv_world.givePlayerBottomCoords().x << serv_world.givePlayerBottomCoords().y;
-			OUTPUT << serv_world.givePlayerTopCoords().x << serv_world.givePlayerTopCoords().y;
-			OUTPUT << serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
-			OUTPUT << serv_world.canEarseBlock();
+            connection = 1;
+            to_client.connection = 1;
+
+            OUTPUT << to_client;
 
 			socket_1.send(OUTPUT);
 			socket_2.send(OUTPUT);
 			OUTPUT.clear();
-
 		} else {
-			OUTPUT << connection;
-			OUTPUT << serv_world.givePlayerBottomCoords().x << serv_world.givePlayerBottomCoords().y;
-			OUTPUT << serv_world.givePlayerTopCoords().x << serv_world.givePlayerTopCoords().y;
-			OUTPUT << serv_world.giveBallCoords().x << serv_world.giveBallCoords().y;
-			OUTPUT << serv_world.canEarseBlock();
+            to_client.connection = connection;
+
+            OUTPUT << to_client;
 		}
 
 		if(data.bot_connect == 1 && data.top_connect == 0) {
@@ -1094,10 +1329,10 @@ public:
 			window(WINDOW),
 			CLIENT(WINDOW)
 	{
-		texture_background.loadFromFile("/home/alex/gittt/arkanoid_wars/background.jpg");
+		texture_background.loadFromFile("../background.jpg");
 		background.setTexture(texture_background);
 		background.setColor(sf::Color(176,176,176));
-		font.loadFromFile("/home/alex/gittt/arkanoid_wars/CyrilicOld.TTF");
+		font.loadFromFile("../CyrilicOld.TTF");
 
 
 		start.setFont(font);
