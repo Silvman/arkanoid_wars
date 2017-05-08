@@ -42,6 +42,7 @@ typedef struct data_from_server {
     sf::Vector2f player_bottom_coords, player_top_coords, ball_coords, ball_speed;
     int broken_block;
     bool isPlayerKicked;
+    int score_bottom, score_top, lives_bottom, lives_top;
 } data_from_server;
 
 // эта перегрузка нужна в сервере
@@ -53,6 +54,7 @@ sf::Packet& operator << (sf::Packet& packet, data_from_server& from) {
     packet << from.ball_speed.x << from.ball_speed.y;
     packet << from.broken_block;
     packet << from.isPlayerKicked;
+    packet << from.score_bottom << from.score_top << from.lives_bottom << from.lives_top;
 
     return packet;
 }
@@ -65,6 +67,8 @@ sf::Packet& operator >> (sf::Packet& packet, data_from_server& to) {
     packet >> to.ball_coords.x >> to.ball_coords.y;
     packet >> to.ball_speed.x >> to.ball_speed.y;
     packet >> to.broken_block;
+    packet >> to.isPlayerKicked;
+    packet >> to.score_bottom >> to.score_top >> to.lives_bottom >> to.lives_top;
 
     return packet;
 }
@@ -88,38 +92,6 @@ private:
 	sf::Sprite background;
 	sf::Texture texture_heart;
 	sf::Sprite heart;
-
-	sf::RectangleShape block;
-
-	/*
-	class block_block {
-	private:
-		sf::RectangleShape block;
-		bool isExists;
-	public:
-		block_block(const float x_start, const float y_start, const float height, const float width, const float angle = 0) {
-			sf::Vector2f size(height, width);
-			block.setPosition(x_start, y_start);
-			block.setSize(size);
-			block.setOrigin(height/2, width/2); // хардкод?
-			block.setRotation(angle);
-		}
-		// как удалять блоки
-		void draw(sf::RenderWindow& window) {
-			if(isExists) {
-				window.draw(block);
-			}
-		}
-		void destroy() {
-			isExists = false;
-		}
-		const sf::RectangleShape& getShape() const {
-			return block;
-		}
-		~block_block(){};
-	};
-	block_block test_block;
-	 */
 
     class block_body {
         private:
@@ -179,7 +151,6 @@ public:
 		score.setFont(font);
 		score.setCharacterSize(30);
 
-
 		player_top.setPosition(window.getSize().x / 2, 35);
 		player_top.setSize(sf::Vector2f(100, 10));
 		player_top.setFillColor(sf::Color::Red);
@@ -229,8 +200,8 @@ public:
 
 
     void draw(const sf::Vector2f& player_bottom_coords, const sf::Vector2f& player_top_coords,
-			  const sf::Vector2f& ball_coords, int block_to_delete, bool connection, unsigned int bot_lives = 3,
-              unsigned int top_lives = 3, unsigned int bot_score = 0, unsigned int top_score = 0)
+			  const sf::Vector2f& ball_coords, int block_to_delete, bool connection, int bot_lives = 3,
+              int top_lives = 3, int bot_score = 0, int top_score = 0)
     {
         window.clear();
         window.draw(background);
@@ -281,11 +252,9 @@ public:
 		score.setPosition(window.getSize().x - 75, 330);
 		window.draw(score);
 
-
-		window.draw(block);
-		window.draw(player_bottom);
-		window.draw(player_top);
-		window.draw(ball);
+        window.draw(player_bottom);
+        window.draw(player_top);
+        window.draw(ball);
 
 		// Отрисовка
 		window.display();
@@ -334,13 +303,6 @@ private:
 
     data_from_server from_server;
 
-    sf::Vector2f player_bottom_position;
-    sf::Vector2f player_top_position;
-    sf::Vector2f ball_position;
-    sf::Vector2f ball_speed;
-
-    int blockToDelete;
-
     bool playerKicked;
 
     /* еще инфа о блоках будет */
@@ -386,24 +348,38 @@ public:
         clock.restart();
 
         if (socket.receive(INPUT) == sf::Socket::NotReady) {
-            graphics.draw(player_bottom_position, player_top_position, ball_position + ball_speed * dt, -1, connection);
+            graphics.draw(
+                    from_server.player_bottom_coords,
+                    from_server.player_top_coords,
+                    from_server.ball_coords + from_server.ball_speed * dt,
+                    -1,
+                    from_server.connection,
+                    from_server.lives_bottom,
+                    from_server.lives_top,
+                    from_server.score_bottom,
+                    from_server.score_top
+            );
         } else {
 			// std::cout << "Packet recieved"<< std::endl;
             INPUT >> from_server;
 
-            connection              = from_server.connection;
-            player_bottom_position  = from_server.player_bottom_coords;
-            player_top_position     = from_server.player_top_coords;
-            ball_position           = from_server.ball_coords;
-            ball_speed              = from_server.ball_speed;
-            blockToDelete           = from_server.broken_block;
-            playerKicked            = from_server.isPlayerKicked;
 
-        	// std::cout << "player bottom: (" << player_bottom_position.x << ", " << player_bottom_position.y << ")" << std::endl;
-        	// std::cout << "player top: (" << player_top_position.x << ", " << player_top_position.y << ")" << std::endl;
-        	// std::cout << "ball: (" << ball_position.x << ", " << ball_position.y << ")" << std::endl;
 
-			graphics.draw(player_bottom_position, player_top_position, ball_position, blockToDelete, connection);
+        	std::cout << "player bottom: (" << from_server.player_bottom_coords.x << ", " << from_server.player_bottom_coords.y << ")" << std::endl;
+        	std::cout << "player top: (" << from_server.player_top_coords.x << ", " << from_server.player_top_coords.y << ")" << std::endl;
+        	std::cout << "ball: (" << from_server.ball_coords.x << ", " << from_server.ball_coords.y << ")" << std::endl;
+
+			graphics.draw(
+                    from_server.player_bottom_coords,
+                    from_server.player_top_coords,
+                    from_server.ball_coords,
+                    from_server.broken_block,
+                    from_server.connection,
+                    from_server.lives_bottom,
+                    from_server.lives_top,
+                    from_server.score_bottom,
+                    from_server.score_top
+            );
 
 		}
 
@@ -441,16 +417,18 @@ public:
 const b2Vec2 ball_default_speed(0.0f, -9.0f);
 const b2Vec2 player_default_speed(15.0f, 0.0f);
 
+enum object_type {
+    undef = 0,
+    player_bottom_id = 1,
+    player_top_id,
+    ball_id,
+    block_id,
+    border_id
+};
+
 class physics_scene {
 private:
 
-    enum object_type {
-        player_bottom_id = 1,
-        player_top_id,
-        ball_id,
-        block_id,
-        border_id
-    };
 
     b2World world;
 
@@ -463,20 +441,36 @@ private:
             physic_body* bodyUserData_A = reinterpret_cast<physic_body *>(contact->GetFixtureA()->GetBody()->GetUserData());
             physic_body* bodyUserData_B = reinterpret_cast<physic_body *>(contact->GetFixtureB()->GetBody()->GetUserData());
 
-            if ( bodyUserData_A->getId() == 4 ) {
+            if ( bodyUserData_A->getId() == block_id ) {
                 reinterpret_cast<physic_block *>(bodyUserData_A)->setKicked();
             }
 
-            if ( bodyUserData_B->getId() == 4 ) {
+            if ( bodyUserData_B->getId() == block_id ) {
                 reinterpret_cast<physic_block *>(bodyUserData_B)->setKicked();
             }
 
-            if ( bodyUserData_A->getId() == 1 or bodyUserData_A->getId() == 2 ) {
+            if ( bodyUserData_A->getId() == player_bottom_id ) {
                 reinterpret_cast<physic_player *>(bodyUserData_A)->setKicked();
+                reinterpret_cast<physic_ball *>(bodyUserData_B)->setOwner(player_bottom_id);
+                return;
             }
 
-            if ( bodyUserData_B->getId() == 1 or bodyUserData_B->getId() == 2 ) {
+            if ( bodyUserData_A->getId() == player_top_id ) {
+                reinterpret_cast<physic_player *>(bodyUserData_A)->setKicked();
+                reinterpret_cast<physic_ball *>(bodyUserData_B)->setOwner(player_top_id);
+                return;
+            }
+
+            if ( bodyUserData_B->getId() == player_bottom_id ) {
                 reinterpret_cast<physic_player *>(bodyUserData_B)->setKicked();
+                reinterpret_cast<physic_ball *>(bodyUserData_A)->setOwner(player_bottom_id);
+                return;
+            }
+
+            if ( bodyUserData_B->getId() == player_top_id ) {
+                reinterpret_cast<physic_player *>(bodyUserData_B)->setKicked();
+                reinterpret_cast<physic_ball *>(bodyUserData_A)->setOwner(player_top_id);
+                return;
             }
         }
     };
@@ -505,6 +499,7 @@ private:
             b2Body* ball;
             b2Vec2 ball_speed;
             bool is_launched;
+            object_type owner;
 
             b2Body* createBall(const float play_pos_x, const float play_pos_y, const bool is_top) {
                 b2Body* new_ball;
@@ -513,10 +508,12 @@ private:
                 ball_def.type = b2_dynamicBody;
 
                 if(is_top) {
+                    owner = player_top_id;
                     ball_def.position.Set(play_pos_x, play_pos_y + 5 / PTM); // тут еще остается ptm TODO
                     // TODO: сделать нормальное изменение скорости
                     ball_speed = b2Vec2(ball_speed.x, fabsf(ball_speed.y));
                 } else {
+                    owner = player_bottom_id;
                     ball_def.position.Set(play_pos_x, play_pos_y - 15 / PTM); // тут еще остается ptm
                     ball_speed = b2Vec2(ball_speed.x, -fabsf(ball_speed.y));
                 }
@@ -558,6 +555,14 @@ private:
             void lauch() {
                 ball->SetLinearVelocity(ball_speed);
                 is_launched = true;
+            }
+
+            void setOwner(object_type type) {
+                owner = type;
+            }
+
+            object_type getOwner() const {
+                return owner;
             }
 
             void move_with_player(const b2Vec2& speed, const unsigned int dest) {
@@ -761,7 +766,9 @@ private:
     /* ------------ Блоки ------------ */
 
     std::vector<physic_block*> blocks;
+
     int broken_block;
+    object_type who_broke_the_block;
 
     bool sound_player;
 
@@ -889,6 +896,7 @@ public:
         clock.restart();
 
         broken_block = -1;
+        who_broke_the_block = undef;
 
         switch (who_lost_the_ball) {
             case 1: {
@@ -920,6 +928,7 @@ public:
             buf = (*it)->try_kick();
             if (buf != -1) {
                 broken_block = buf;
+                who_broke_the_block = ball.getOwner();
             }
         }
 
@@ -951,6 +960,10 @@ public:
 
     const int getBrokenBlock() {
         return broken_block;
+    }
+
+    object_type getHitman() {
+        return who_broke_the_block;
     }
 
     bool checkPlayerKicked() {
@@ -1088,6 +1101,7 @@ public:
     {
         blocks.push_back(logic_block(1));
         blocks.push_back(logic_block(2));
+        /* TODO: сделать логических блоки, сейчас их в принципе нет */
     }
 
     void update(
@@ -1114,6 +1128,21 @@ public:
 
         if (player_top.getLives() < 0) {
             // второй проиграл
+        }
+
+        switch (physics.getHitman()) {
+            case player_bottom_id: {
+                ++player_bottom;
+                break;
+            }
+
+            case player_top_id: {
+                ++player_top;
+                break;
+            }
+
+            default:
+                break;
         }
 
 
@@ -1167,6 +1196,22 @@ public:
 
     const sf::Vector2f giveBallSpeed() const {
         return physics.giveBallSpeed();
+    }
+
+    int giveLivesBottom() const {
+        return player_bottom.getLives();
+    }
+
+    int giveLivesTop() const {
+        return player_top.getLives();
+    }
+
+    int giveScoreBottom() const {
+        return player_bottom.getScore();
+    }
+
+    int giveScoreTop() const {
+        return player_top.getScore();
     }
 
     int getBrokenBlocks() {
@@ -1269,12 +1314,16 @@ public:
 		if (data.bot_connect == 1 && data.top_connect == 1) {
             serv_world.update(data.key_bottom_move, data.key_bottom_action, data.key_top_move, data.key_top_action);
 
-            to_client.player_bottom_coords = serv_world.givePlayerBottomCoords();
-            to_client.player_top_coords = serv_world.givePlayerTopCoords();
-            to_client.ball_coords = serv_world.giveBallCoords();
-            to_client.ball_speed = serv_world.giveBallSpeed();
-            to_client.broken_block = serv_world.getBrokenBlocks();
-            to_client.isPlayerKicked = serv_world.checkPlayerKicked();
+            to_client.player_bottom_coords  = serv_world.givePlayerBottomCoords();
+            to_client.player_top_coords     = serv_world.givePlayerTopCoords();
+            to_client.ball_coords           = serv_world.giveBallCoords();
+            to_client.ball_speed            = serv_world.giveBallSpeed();
+            to_client.broken_block          = serv_world.getBrokenBlocks();
+            to_client.isPlayerKicked        = serv_world.checkPlayerKicked();
+            to_client.score_bottom          = serv_world.giveScoreBottom();
+            to_client.score_top             = serv_world.giveScoreTop();
+            to_client.lives_bottom          = serv_world.giveLivesBottom();
+            to_client.lives_top             = serv_world.giveLivesTop();
 
             connection = 1;
             to_client.connection = 1;
