@@ -4,7 +4,7 @@
 
 #ifndef AW_SERVER_LOGIC_HPP
 #define AW_SERVER_LOGIC_HPP
-#include "physics.h"
+#include "physics.hpp"
 
 
 class logic_world {

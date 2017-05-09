@@ -29,12 +29,12 @@ void graphics_scene::block_body::kick()
 }
 
 graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
-	font.loadFromFile("/home/alex/gittt/arkanoid_wars/client/CyrilicOld.TTF");
-	texture_background.loadFromFile("/home/alex/gittt/arkanoid_wars/client/background.jpg");
+	font.loadFromFile("../../client/CyrilicOld.TTF");
+	texture_background.loadFromFile("../../client/background.jpg");
 	background.setTexture(texture_background);
 	background.setColor(sf::Color(176,176,176));
 
-	texture_heart.loadFromFile("/home/alex/gittt/arkanoid_wars/client/heart.png");
+	texture_heart.loadFromFile("../../client/heart.png");
 	heart.setTexture(texture_heart);
 	heart.setScale(0.6,0.6);
 

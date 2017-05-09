@@ -8,10 +8,10 @@ menu::menu(sf::RenderWindow& WINDOW) :
 window(WINDOW),
 CLIENT(WINDOW)
 {
-	texture_background.loadFromFile("/home/alex/gittt/arkanoid_wars/client/background.jpg");
+	texture_background.loadFromFile("../../client/background.jpg");
 	background.setTexture(texture_background);
 	background.setColor(sf::Color(176,176,176));
-	font.loadFromFile("/home/alex/gittt/arkanoid_wars/client/CyrilicOld.TTF");
+	font.loadFromFile("../../client/CyrilicOld.TTF");
 
 
 	start.setFont(font);

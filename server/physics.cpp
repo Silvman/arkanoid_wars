@@ -2,7 +2,7 @@
 // Created by silvman on 09.05.17.
 //
 
-#include "physics.h"
+#include "physics.hpp"
 
 
 const b2Vec2 ball_default_speed(0.0f, -9.0f);
