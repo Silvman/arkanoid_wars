@@ -310,6 +310,7 @@ private:
 public:
 	client(sf::RenderWindow& window) : graphics(window), key_move(0), key_action(0)
 	{
+        
 	}
 
 	void connect (sf::IpAddress ip) {
