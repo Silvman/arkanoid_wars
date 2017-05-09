@@ -3,7 +3,7 @@ project(aw_server)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES main.cpp physics.cpp)
+set(SOURCE_FILES main.cpp physics.h physics.cpp logic.cpp logic.hpp server.cpp server.hpp)
 add_executable(aw_server ${SOURCE_FILES})
 
 set(CMAKE_MODULE_PATH "../cmake_modules")

@@ -3,7 +3,7 @@ project(aw_client)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES main.cpp)
+set(SOURCE_FILES main.cpp graphics_scene.cpp graphics_scene.hpp menu.cpp menu.hpp client.cpp client.hpp)
 add_executable(aw_client ${SOURCE_FILES})
 
 set(CMAKE_MODULE_PATH "../cmake_modules")

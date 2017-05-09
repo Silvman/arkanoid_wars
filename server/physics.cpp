@@ -2,7 +2,6 @@
 // Created by silvman on 09.05.17.
 //
 
-#include <SFML/Graphics.hpp>
 #include "physics.h"
 
 

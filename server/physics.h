@@ -6,6 +6,8 @@
 #define PHYSICS_H
 
 #include <Box2D/Box2D.h>
+#include <SFML/Graphics.hpp>
+#include <iostream>
 
 #define PTM 30.0f
 #define DEG 57.29577f
