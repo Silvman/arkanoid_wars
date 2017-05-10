@@ -2,7 +2,7 @@
 // Created by alex on 09.05.17.
 //
 
-#include "client.hpp"
+#include "headers/client.hpp"
 
 client::client(sf::RenderWindow& window) :
 		graphics(window),
@@ -92,17 +92,4 @@ void client::disconnect() {
 
 client::~client() {
 	socket.disconnect();
-}
-
-sf::Packet& operator>>(sf::Packet& packet, data_from_server& to) {
-	packet >> to.connection;
-	packet >> to.player_bottom_coords.x >> to.player_bottom_coords.y;
-	packet >> to.player_top_coords.x >> to.player_top_coords.y;
-	packet >> to.ball_coords.x >> to.ball_coords.y;
-	packet >> to.ball_speed.x >> to.ball_speed.y;
-	packet >> to.broken_block;
-	packet >> to.isPlayerKicked;
-	packet >> to.score_bottom >> to.score_top >> to.lives_bottom >> to.lives_top;
-
-	return packet;
 }

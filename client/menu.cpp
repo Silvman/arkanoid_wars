@@ -2,16 +2,16 @@
 // Created by alex on 09.05.17.
 //
 
-#include "menu.hpp"
+#include "headers/menu.hpp"
 
 menu::menu(sf::RenderWindow& WINDOW) :
 window(WINDOW),
 CLIENT(WINDOW)
 {
-	texture_background.loadFromFile("../../client/background.jpg");
+	texture_background.loadFromFile("../../client/img/background.jpg");
 	background.setTexture(texture_background);
 	background.setColor(sf::Color(176,176,176));
-	font.loadFromFile("../../client/CyrilicOld.TTF");
+	font.loadFromFile("../../client/img/CyrilicOld.TTF");
 
 
 	start.setFont(font);

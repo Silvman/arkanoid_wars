@@ -6,6 +6,14 @@
 #define AW_SERVER_LOGIC_HPP
 #include "physics.hpp"
 
+enum block_type {
+	simple = 0,
+	rocket,
+	slow_player,
+	fast_player,
+	freeze_enemy,
+	fast_ball
+};
 
 class logic_world {
 private:
@@ -40,14 +48,6 @@ private:
 
 	class logic_block {
 	private:
-		enum block_type {
-			simple = 0,
-			rocket,
-			slow_player,
-			fast_player,
-			freeze_enemy,
-			fast_ball
-		};
 
 		bool is_kicked;
 		int number;

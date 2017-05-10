@@ -7,15 +7,7 @@
 
 #include <SFML/Network.hpp>
 #include "graphics_scene.hpp"
-
-
-typedef struct data_from_server {
-	bool connection;
-	sf::Vector2f player_bottom_coords, player_top_coords, ball_coords, ball_speed;
-	int broken_block;
-	bool isPlayerKicked;
-	int score_bottom, score_top, lives_bottom, lives_top;
-} data_from_server;
+#include "../../common.hpp"
 
 
 class client {
@@ -46,6 +38,5 @@ public:
 	friend sf::Packet& operator >> (sf::Packet& packet, data_from_server& to);
 };
 
-sf::Packet& operator >> (sf::Packet& packet, data_from_server& to);
 
 #endif //ARKANOIDWARS_CLIENT_HPP

@@ -2,7 +2,7 @@
 // Created by alex on 09.05.17.
 //
 
-#include "logic.hpp"
+#include "headers/logic.hpp"
 
 logic_world::logic_player::logic_player(const float x_start, const float y_start, int lives) :
 		position(x_start, y_start),
@@ -61,7 +61,7 @@ logic_world::logic_ball::getPosition() const {
 	return position;
 }
 
-logic_world::logic_block::logic_block(const int number, logic_world::logic_block::block_type type) :
+logic_world::logic_block::logic_block(const int number, block_type type) :
 		number(number),
 		type(type)
 {

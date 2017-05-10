@@ -2,7 +2,7 @@
 // Created by alex on 09.05.17.
 //
 
-#include "graphics_scene.hpp"
+#include "headers/graphics_scene.hpp"
 
 graphics_scene::block_body::block_body(const float x_start, const float y_start,
 									   const float height, const float width,
@@ -29,12 +29,12 @@ void graphics_scene::block_body::kick()
 }
 
 graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
-	font.loadFromFile("../../client/CyrilicOld.TTF");
-	texture_background.loadFromFile("../../client/background.jpg");
+	font.loadFromFile("../../client/img/CyrilicOld.TTF");
+	texture_background.loadFromFile("../../client/img/background.jpg");
 	background.setTexture(texture_background);
 	background.setColor(sf::Color(176,176,176));
 
-	texture_heart.loadFromFile("../../client/heart.png");
+	texture_heart.loadFromFile("../../client/img/heart.png");
 	heart.setTexture(texture_heart);
 	heart.setScale(0.6,0.6);
 
