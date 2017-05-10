@@ -122,6 +122,7 @@ logic_world::update(const num_move key_bottom_move, num_action key_bottom_action
 	}
 
 	/*
+	// другой вариант логики
 	if (count_blocks < 1) {
 		if(player_bottom.getScore() > player_top.getScore()) {
 			winner = bottom;
@@ -158,7 +159,8 @@ logic_world::update(const num_move key_bottom_move, num_action key_bottom_action
 		winner = top;
 	}
 
-
+	/*
+	// другой вариант игровой логики
 	switch (physics.getHitman()) {
 		case bottom: {
 			++player_bottom;
@@ -174,7 +176,7 @@ logic_world::update(const num_move key_bottom_move, num_action key_bottom_action
 
 		default:
 			break;
-	}
+	}*/
 
 	/*
 	for(auto it_bl = blocks.begin(); it_bl != blocks.end(); it_bl++)
@@ -183,7 +185,7 @@ logic_world::update(const num_move key_bottom_move, num_action key_bottom_action
 	*/
 
 	// обрабатываем кажатые клавишы с учетом того, у кого шарик - у верхнего или у нижнего
-	if (who_leads_the_ball == top) {
+	if (who_leads_the_ball == bottom) {
 		// если шарик у нижнего, верхний не может его запустить
 		if(key_top_action != use_weapon)
 			key_top_action = nothing;

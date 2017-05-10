@@ -502,7 +502,7 @@ void physics_scene::calculate(
     analyseKeys(player_bottom, who_leads_the_ball, key_bottom_move, key_bottom_action);
     analyseKeys(player_top, who_leads_the_ball, key_top_move, key_top_action);
 
-    if (who_leads_the_ball == top) {
+    if (who_leads_the_ball == bottom) {
         moveBall(player_bottom, key_bottom_move);
     } else {
         moveBall(player_top, key_top_move);
