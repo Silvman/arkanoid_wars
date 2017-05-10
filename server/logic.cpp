@@ -61,6 +61,7 @@ logic_world::logic_ball::getPosition() const {
 	return position;
 }
 
+/*
 logic_world::logic_block::logic_block(const int number, block_type type) :
 		number(number),
 		type(type)
@@ -76,55 +77,72 @@ int
 logic_world::logic_block::getNumber() const {
 	return number;
 }
+*/
 
 logic_world::logic_world(const float window_size_x, const float window_size_y):
 		player_bottom(window_size_x / 2.0f, window_size_y - 25.0f, 4),
 		player_top(window_size_x / 2.0f, window_size_y - 25.0f),
 		ball(window_size_x / 2.0f, window_size_y - 35.0f),
+		count_blocks(34),
 		physics(window_size_x, window_size_y),
-		who_lost_the_ball(0),
-		who_leads_the_ball(1),
+		who_lost_the_ball(no),
+		who_leads_the_ball(bottom),
 		bottom_border(window_size_y)
 {
-	blocks.push_back(logic_block(1));
-	blocks.push_back(logic_block(2));
+	// blocks.push_back(logic_block(1));
 	/* TODO: сделать логических блоки, сейчас их в принципе нет*/
 }
 
 void
-logic_world::update(const unsigned int key_bottom_move, unsigned int key_bottom_action,
-					const unsigned int key_top_move, unsigned int key_top_action)
+logic_world::update(const num_move key_bottom_move, num_action key_bottom_action,
+					const num_move key_top_move, num_action key_top_action)
 {
 
 	// шарик ушел за пределы поля
 	if (ball.getPosition().y > bottom_border) {
 		player_bottom.setLives(player_bottom.getLives() - 1);
-		who_lost_the_ball = 1;
+		who_lost_the_ball = bottom;
 	}
 
 	if (ball.getPosition().y < 0) {
 		player_top.setLives(player_top.getLives() - 1);
-		who_lost_the_ball = 2;
+		who_lost_the_ball = top;
 	}
 
 	// жизней меньше нуля
 	if (player_bottom.getLives() < 0) {
-		// первый проиграл
+		winner = top;
+		return;
 	}
 
 
 	if (player_top.getLives() < 0) {
-		// второй проиграл
+		winner = bottom;
+		return;
 	}
 
+	/*
+	if (count_blocks < 1) {
+		if(player_bottom.getScore() > player_top.getScore()) {
+			winner = bottom;
+		} else {
+			winner = top;
+		}
+		return;
+	}
+	*/
+
+
 	switch (physics.getHitman()) {
-		case player_bottom_id: {
+		case bottom: {
 			++player_bottom;
+			//--count_blocks;
 			break;
 		}
 
-		case player_top_id: {
+		case top: {
 			++player_top;
+			//--count_blocks;
 			break;
 		}
 
@@ -132,20 +150,47 @@ logic_world::update(const unsigned int key_bottom_move, unsigned int key_bottom_
 			break;
 	}
 
+	if (player_bottom.getScore() > count_blocks / 2) {
+		winner = bottom;
+	}
 
+	if (player_top.getScore() > count_blocks / 2) {
+		winner = top;
+	}
+
+
+	switch (physics.getHitman()) {
+		case bottom: {
+			++player_bottom;
+			--count_blocks;
+			break;
+		}
+
+		case top: {
+			++player_top;
+			--count_blocks;
+			break;
+		}
+
+		default:
+			break;
+	}
+
+	/*
 	for(auto it_bl = blocks.begin(); it_bl != blocks.end(); it_bl++)
 		if(it_bl->getNumber() == broken_block)
 			it_bl->setKicked();
+	*/
 
 	// обрабатываем кажатые клавишы с учетом того, у кого шарик - у верхнего или у нижнего
-	if (who_leads_the_ball == 1) {
+	if (who_leads_the_ball == top) {
 		// если шарик у нижнего, верхний не может его запустить
-		if(key_top_action == 1)
-			key_top_action = 0;
+		if(key_top_action != use_weapon)
+			key_top_action = nothing;
 
 	} else {
-		if(key_bottom_action == 1)
-			key_bottom_action = 0;
+		if(key_bottom_action != use_weapon)
+			key_bottom_action = nothing;
 
 	}
 
@@ -154,11 +199,11 @@ logic_world::update(const unsigned int key_bottom_move, unsigned int key_bottom_
 					  who_lost_the_ball, who_leads_the_ball);
 
 	// шарик отдается тому, кто его упустил
-	if(who_lost_the_ball != 0)
+	if(who_lost_the_ball != no)
 		who_leads_the_ball = who_lost_the_ball;
 
 	// обработали потерю шарика, можем вернуть переменной исходное значение
-	who_lost_the_ball = 0;
+	who_lost_the_ball = no;
 
 	player_bottom.setPosition(physics.givePlayerBottomCoords());
 	player_top.setPosition(physics.givePlayerTopCoords());
@@ -222,4 +267,9 @@ bool
 logic_world::checkPlayerKicked()
 {
 	return physics.checkPlayerKicked();
+}
+
+players
+logic_world::whoWin() const {
+	return winner;
 }

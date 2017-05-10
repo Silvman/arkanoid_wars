@@ -10,17 +10,17 @@ server::server(const unsigned short port) : serv_world(1024,768) {
 	std::cout << "Server is listening to port " << port << ", waiting for connection 1. " << std::endl;
 
 	listener.accept(socket_1);
-	OUTPUT << 1;
-	socket_1.send(OUTPUT);
-	OUTPUT.clear();
+	output_packet << 1;
+	socket_1.send(output_packet);
+	output_packet.clear();
 
 	std::cout << "Client 1 is connected, ip " << socket_1.getRemoteAddress() << std::endl;
 
 	std::cout << "Server is listening to port " << port << ", waiting for connection 2. " << std::endl;
 	listener.accept(socket_2);
-	OUTPUT << 2;
-	socket_2.send(OUTPUT);
-	OUTPUT.clear();
+	output_packet << 2;
+	socket_2.send(output_packet);
+	output_packet.clear();
 
 	std::cout << "Client 2 is connected, ip " << socket_2.getRemoteAddress() << std::endl;
 }
@@ -30,31 +30,35 @@ void server::input() {
 	// В движениях: 1 - влево, 2 - вправо, 0 - по-умолчанию
 	// В действиях  1 - запуск шара
 
-	if (socket_1.receive(INPUT) == sf::Socket::Done ) {
+	if (socket_1.receive(input_packet) == sf::Socket::Done ) {
 		data.bot_connect = 1;
 
-		INPUT >> data.num >> data.key_bottom_move >> data.key_bottom_action;
+		input_packet >> data.num >> data.key_bottom_move >> data.key_bottom_action;
 		//std::cout << "Socket 1. Recieved: " << data.num << ", " << data.key_bottom_move <<
 		//		", " << data.key_bottom_action << std::endl;
 
-		INPUT.clear();
+		input_packet.clear();
 
 	} else data.bot_connect = 0;
 
-	if(socket_2.receive(INPUT) == sf::Socket::Done) {
+	if(socket_2.receive(input_packet) == sf::Socket::Done) {
 		data.top_connect = 1;
 
-		INPUT >> data.num >> data.key_top_move >> data.key_top_action;
+		input_packet >> data.num >> data.key_top_move >> data.key_top_action;
 		//std::cout << "Socket 2. Recieved: " << data.num << ", " << data.key_top_move <<
 		//		", " << data.key_top_action << std::endl;
 
-		INPUT.clear();
+		input_packet.clear();
 	} else data.top_connect = 0;
 }
 
 void server::output() {
 	if (data.bot_connect == 1 && data.top_connect == 1) {
 		serv_world.update(data.key_bottom_move, data.key_bottom_action, data.key_top_move, data.key_top_action);
+
+		if (serv_world.whoWin() != no) {
+			std::cout << "Winner: " << serv_world.whoWin() << std::endl;
+		}
 
 		to_client.player_bottom_coords  = serv_world.givePlayerBottomCoords();
 		to_client.player_top_coords     = serv_world.givePlayerTopCoords();
@@ -66,29 +70,30 @@ void server::output() {
 		to_client.score_top             = serv_world.giveScoreTop();
 		to_client.lives_bottom          = serv_world.giveLivesBottom();
 		to_client.lives_top             = serv_world.giveLivesTop();
+        to_client.winner                = serv_world.whoWin();
 
 		connection = 1;
 		to_client.connection = 1;
 
-		OUTPUT << to_client;
+		output_packet << to_client;
 
-		socket_1.send(OUTPUT);
-		socket_2.send(OUTPUT);
-		OUTPUT.clear();
+		socket_1.send(output_packet);
+		socket_2.send(output_packet);
+		output_packet.clear();
 	} else {
 		to_client.connection = connection;
 
-		OUTPUT << to_client;
+		output_packet << to_client;
 	}
 
 	if(data.bot_connect == 1 && data.top_connect == 0) {
-		socket_1.send(OUTPUT);
-		OUTPUT.clear();
+		socket_1.send(output_packet);
+		output_packet.clear();
 	}
 
 	if(data.bot_connect == 0 && data.top_connect == 1) {
-		socket_2.send(OUTPUT);
-		OUTPUT.clear();
+		socket_2.send(output_packet);
+		output_packet.clear();
 	}
 
 	connection = 0;

@@ -8,6 +8,7 @@
 #include <Box2D/Box2D.h>
 #include <SFML/Graphics.hpp>
 #include <iostream>
+#include "../../common.hpp"
 
 #define PTM 30.0f
 #define DEG 57.29577f
@@ -64,7 +65,6 @@ private:
     class physic_ball : public physic_body {
     private:
         b2Body* ball;
-        b2Vec2 ball_speed;
         bool is_launched;
         object_type owner;
 
@@ -75,8 +75,8 @@ private:
         ~physic_ball();
 
         void restart(const b2Vec2& player_position, const bool is_top);
-        void lauch();
-        void move_with_player(const b2Vec2& speed, const unsigned int dest);
+        void lauch(const num_action push, const players pl);
+        void move_with_player(const b2Vec2& speed, const num_move dest);
 
         void setOwner(object_type type);
         object_type getOwner() const;
@@ -97,7 +97,7 @@ private:
         ~physic_player();
 
         void stop();
-        void move(const unsigned int dest);
+        void move(const num_move dest);
         bool checkKicked();
 
         const b2Vec2 getSpeed() const;
@@ -172,13 +172,13 @@ private:
 public:
     physics_scene(const float window_size_x, const float window_size_y);
 
-    void analyseKeys(physic_player& player, const unsigned move, const unsigned action);
-    void moveBall(physic_player& player, const unsigned move);
+    void analyseKeys(physic_player& player, const players who_leads_the_ball, const num_move move, const num_action action);
+    void moveBall(physic_player& player, const num_move move);
 
     void calculate(
-            const unsigned int key_bottom_move, const unsigned int key_bottom_action,
-            const unsigned int key_top_move, const unsigned int key_top_action,
-            const int who_lost_the_ball, const int who_leads_the_ball
+            const num_move key_bottom_move, const num_action key_bottom_action,
+            const num_move key_top_move, const num_action key_top_action,
+            const players who_lost_the_ball, const players who_leads_the_ball
     );
 
     const sf::Vector2f givePlayerBottomCoords() const;
@@ -186,8 +186,8 @@ public:
     const sf::Vector2f giveBallCoords() const;
     const sf::Vector2f giveBallSpeed() const;
 
-    const int getBrokenBlock();
-    object_type getHitman();
+    const int getBrokenBlock() const;
+    players getHitman() const;
     bool checkPlayerKicked();
 
     ~physics_scene();

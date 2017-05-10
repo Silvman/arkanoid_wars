@@ -5,6 +5,7 @@
 #ifndef AW_SERVER_LOGIC_HPP
 #define AW_SERVER_LOGIC_HPP
 #include "physics.hpp"
+#include "../../common.hpp"
 
 enum block_type {
 	simple = 0,
@@ -45,7 +46,7 @@ private:
 		const sf::Vector2f getPosition() const;
 		~logic_ball() {}
 	};
-
+/*
 	class logic_block {
 	private:
 
@@ -59,7 +60,7 @@ private:
 		int getNumber() const;
 		~logic_block() {}
 	};
-
+*/
 	// (1) первый игрок - снизу
 	logic_player player_bottom;
 
@@ -69,32 +70,42 @@ private:
 	// мячик
 	logic_ball ball;
 
-	std::vector<logic_block> blocks;
+	//std::vector<logic_block> blocks;
+
+    int count_blocks;
 
 	int broken_block;
 	// Флаг, содержащий информацию о том, кто потерял шарик, и (== 0) если шарик не потерян
-	int who_lost_the_ball;
-	int who_leads_the_ball;
+	players who_lost_the_ball;
+	players who_leads_the_ball;
+    players winner;
 
 	physics_scene physics;
 
+    // для опередления проигрыша нижнего
 	const float bottom_border;
 
 public:
 	logic_world(const float window_size_x,const float window_size_y);
-	void update(const unsigned int key_bottom_move, unsigned int key_bottom_action,
-			const unsigned int key_top_move, unsigned int key_top_action);
+	void update(const num_move key_bottom_move, num_action key_bottom_action,
+			const num_move key_top_move, num_action key_top_action);
+
 	const sf::Vector2f givePlayerTopCoords() const ;
 	const sf::Vector2f givePlayerBottomCoords() const;
 	const sf::Vector2f giveBallCoords() const;
 	const sf::Vector2f giveBallSpeed() const;
+
 	int giveLivesBottom() const;
 	int giveLivesTop() const;
 	int giveScoreBottom() const;
 	int giveScoreTop() const;
 	int getBrokenBlocks();
-	bool checkPlayerKicked();
-	~logic_world() {}
+
+    bool checkPlayerKicked();
+
+    players whoWin() const;
+
+    ~logic_world() {}
 
 };
 

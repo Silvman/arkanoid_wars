@@ -69,17 +69,17 @@ graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
 			{1, 0, 1, 0, 1, 0, 1, 0},
 			{1, 0, 1, 0, 1, 0, 1, 0},
 			{1, 0, 1, 0, 1, 0, 1, 0},
+			{1, 0, 1, 1, 1, 0, 1, 0},
 			{1, 0, 1, 0, 1, 0, 1, 0},
 			{1, 0, 1, 0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1, 0, 1, 0},
+			{1, 0, 1, 0, 1, 0, 1, 1},
 			{1, 0, 1, 0, 1, 0, 1, 0}
 	};
 
 	const float height = 400 / rows;
 	const float width = 400 / cols;
 	const float space = 5;
-	const float start_x = 250;
+	const float start_x = 260; // сдвинуть на относительно сервера
 	const float start_y = 200;
 
 	for(int i = 0; i < rows; i++) {

@@ -4,10 +4,11 @@
 
 #include "headers/client.hpp"
 
+
 client::client(sf::RenderWindow& window) :
 		graphics(window),
-		key_move(0),
-		key_action(0)
+		key_move(stay),
+		key_action(nothing)
 {
 
 }
@@ -16,38 +17,55 @@ void client::connect(sf::IpAddress ip) {
 	socket.connect(ip, 2000);
 	std::cout << "Connected with server" << std::endl;
 
-	socket.receive(INPUT);
+	socket.receive(input_packet);
 
-	INPUT >> my_number;
+	input_packet >> my_number;
 	std::cout << "my number is: " << my_number << std::endl;
 	graphics.draw_wait_con();
 }
 
 void client::run(sf::RenderWindow& window){
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-		key_move = 1;
+		key_move = move_left;
 
 	// костыльно! TODO : переписать
 	if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-		key_move = 0;
-		key_action = 0;
+		key_move = stay;
+		key_action = nothing;
 	}
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-		key_move = 2;
+		key_move = move_right;
 
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-		key_action = 1;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+        key_action = push_vertical;
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
+        key_action = push_left;
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+        key_action = push_lefter;
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::E))
+        key_action = push_right;
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        key_action = push_righter;
 
 	// std::cout << "key_move: " << key_move << ", key_action: " << key_action << std::endl;
-	OUTPUT << my_number << key_move << key_action;
-	socket.send(OUTPUT);
-	OUTPUT.clear();
+	output_packet << my_number << key_move << key_action;
+
+	socket.send(output_packet);
+	output_packet.clear();
+
 
 	dt = clock.getElapsedTime().asSeconds();
 	clock.restart();
 
-	if (socket.receive(INPUT) == sf::Socket::NotReady) {
+	if (socket.receive(input_packet) == sf::Socket::NotReady) {
+
+		// отрисовка пока пакет не дошёл
+
 		graphics.draw(
 				from_server.player_bottom_coords,
 				from_server.player_top_coords,
@@ -59,15 +77,17 @@ void client::run(sf::RenderWindow& window){
 				from_server.score_bottom,
 				from_server.score_top
 		);
+
+
 	} else {
 		// std::cout << "Packet recieved"<< std::endl;
-		INPUT >> from_server;
-
-
+		input_packet >> from_server;
 
 		std::cout << "player bottom: (" << from_server.player_bottom_coords.x << ", " << from_server.player_bottom_coords.y << ")" << std::endl;
 		std::cout << "player top: (" << from_server.player_top_coords.x << ", " << from_server.player_top_coords.y << ")" << std::endl;
 		std::cout << "ball: (" << from_server.ball_coords.x << ", " << from_server.ball_coords.y << ")" << std::endl;
+
+		playerKicked = from_server.isPlayerKicked;
 
 		graphics.draw(
 				from_server.player_bottom_coords,

@@ -5,7 +5,7 @@
 #include "headers/physics.hpp"
 
 
-const b2Vec2 ball_default_speed(0.0f, -9.0f);
+// const b2Vec2 ball_default_speed(0.0f, -9.0f);
 const b2Vec2 player_default_speed(15.0f, 0.0f);
 
 
@@ -63,7 +63,7 @@ object_type physics_scene::physic_body::getId() const {
 
 // physic_ball
 physics_scene::physic_ball::physic_ball(b2World& world, const float play_pos_x, const float play_pos_y)
-        : physic_body(world, ball_id), ball_speed(ball_default_speed)
+        : physic_body(world, ball_id)
 {
     // последний параметр определяет где находится шарик - у верхнего (true) или у нижнего (false) игрока
     ball = createBall(play_pos_x, play_pos_y, false);
@@ -80,12 +80,9 @@ b2Body* physics_scene::physic_ball::createBall(const float play_pos_x, const flo
     if(is_top) {
         owner = player_top_id;
         ball_def.position.Set(play_pos_x, play_pos_y + 5 / PTM); // тут еще остается ptm TODO
-        // TODO: сделать нормальное изменение скорости
-        ball_speed = b2Vec2(ball_speed.x, fabsf(ball_speed.y));
     } else {
         owner = player_bottom_id;
         ball_def.position.Set(play_pos_x, play_pos_y - 15 / PTM); // тут еще остается ptm
-        ball_speed = b2Vec2(ball_speed.x, -fabsf(ball_speed.y));
     }
 
     new_ball = world.CreateBody(&ball_def);
@@ -114,25 +111,90 @@ void physics_scene::physic_ball::restart(const b2Vec2& player_position, const bo
     ball = createBall(player_position.x, player_position.y, is_top);
 }
 
-void physics_scene::physic_ball::lauch() {
-    ball->SetLinearVelocity(ball_speed);
+void physics_scene::physic_ball::lauch(const num_action push, const players pl) {
     is_launched = true;
+
+    if (pl == bottom) {
+            switch (push) {
+                case push_vertical: {
+                    ball->SetLinearVelocity(b2Vec2(0.0f, -9.0f));
+                    break;
+                }
+
+                case push_left: {
+                    ball->SetLinearVelocity(b2Vec2(-4.0f, -8.0f));
+                    break;
+                }
+
+                case push_right: {
+                    ball->SetLinearVelocity(b2Vec2(4.0f, -8.0f));
+                    break;
+                }
+
+                case push_righter: {
+                    ball->SetLinearVelocity(b2Vec2(5.0f, -5.0f));
+                    break;
+                }
+
+                case push_lefter: {
+                    ball->SetLinearVelocity(b2Vec2(-5.0f, -5.0f));
+                    break;
+                }
+
+                default: {
+                    break;
+                }
+            }
+    }
+
+    if (pl == top) {
+            switch (push) {
+                case push_vertical: {
+                    ball->SetLinearVelocity(b2Vec2(0.0f, 9.0f));
+                    break;
+                }
+
+                case push_left: {
+                    ball->SetLinearVelocity(b2Vec2(-4.0f, 8.0f));
+                    break;
+                }
+
+                case push_right: {
+                    ball->SetLinearVelocity(b2Vec2(4.0f, 8.0f));
+                    break;
+                }
+
+                case push_righter: {
+                    ball->SetLinearVelocity(b2Vec2(5.0f, 5.0f));
+                    break;
+                }
+
+                case push_lefter: {
+                    ball->SetLinearVelocity(b2Vec2(-5.0f, 5.0f));
+                    break;
+                }
+
+                default: {
+                    break;
+                }
+            }
+    }
 }
 
-void physics_scene::physic_ball::move_with_player(const b2Vec2& speed, const unsigned int dest) {
+void physics_scene::physic_ball::move_with_player(const b2Vec2& speed, const num_move dest) {
     switch (dest) {
-        case 2: {
+        case move_right: {
             ball->SetLinearVelocity(speed);
             break;
         }
 
-        case 1: {
+        case move_left: {
             ball->SetLinearVelocity(-speed);
             break;
         }
 
             // дописал default, ибо не по православному без него
-        case 0:
+        case stay:
         default: {
             ball->SetLinearVelocity(b2Vec2(0,0));
             break;
@@ -190,20 +252,20 @@ void physics_scene::physic_player::stop() {
     player->SetLinearVelocity(b2Vec2(0,0));
 }
 
-void physics_scene::physic_player::move(const unsigned int dest) {
+void physics_scene::physic_player::move(const num_move dest) {
     switch (dest) {
-        case 2: {
+        case move_right: {
             player->SetLinearVelocity(player_speed);
             break;
         }
 
-        case 1: {
+        case move_left: {
             player->SetLinearVelocity(-player_speed);
             break;
         }
 
         default:
-        case 0: {
+        case stay: {
             stop();
             break;
         }
@@ -297,7 +359,10 @@ physics_scene::physics_scene(const float window_size_x, const float window_size_
           player_bottom(world, (window_size_x / 2), (window_size_y - 35), player_bottom_id),
           player_top(world, (window_size_x / 2), 35, player_top_id),
           right_border(world, (window_size_x - 10), (window_size_y / 2), 10.0f, window_size_y / 2),
-          left_border(world, 0.0f, (window_size_y / 2), 10.0f, window_size_y / 2)
+          left_border(world, 0.0f, (window_size_y / 2), 10.0f, window_size_y / 2),
+          broken_block(-1),
+          sound_player(false),
+          who_broke_the_block(undef)
 {
     world.SetContactListener(&listener);
 
@@ -308,10 +373,10 @@ physics_scene::physics_scene(const float window_size_x, const float window_size_
             {1, 0, 1, 0, 1, 0, 1, 0},
             {1, 0, 1, 0, 1, 0, 1, 0},
             {1, 0, 1, 0, 1, 0, 1, 0},
+            {1, 0, 1, 1, 1, 0, 1, 0},
             {1, 0, 1, 0, 1, 0, 1, 0},
             {1, 0, 1, 0, 1, 0, 1, 0},
-            {1, 0, 1, 0, 1, 0, 1, 0},
-            {1, 0, 1, 0, 1, 0, 1, 0},
+            {1, 0, 1, 0, 1, 0, 1, 1},
             {1, 0, 1, 0, 1, 0, 1, 0}
     };
 
@@ -351,60 +416,65 @@ physics_scene::~physics_scene() {
     }
 }
 
-void physics_scene::analyseKeys(physic_player& player, const unsigned move, const unsigned action) {
+void physics_scene::analyseKeys(physic_player& player, const players who_leads_the_ball, const num_move move, const num_action action) {
     switch (move) {
-        case 1:
-        case 2: {
+        case move_left:
+        case move_right: {
             player.move(move);
             break;
         }
 
         default:
-        case 0: {
+        case stay: {
             player.stop();
             break;
         }
     }
 
-    switch (action) {
-        case 1: {
-            if( !ball.isLaunched() ) {
-                ball.lauch();
+    if( !ball.isLaunched() ) {
+        switch (action) {
+            case push_vertical:
+            case push_right:
+            case push_righter:
+            case push_left:
+            case push_lefter: {
+                ball.lauch(action, who_leads_the_ball);
+                break;
             }
-            break;
-        }
 
-        default: break;
+            default:
+                break;
+        }
     }
 }
 
-void physics_scene::moveBall(physic_player& player, const unsigned move) {
+void physics_scene::moveBall(physic_player& player, const num_move move) {
     switch (move) {
-        case 1: {
+        case move_left: {
             if( !ball.isLaunched() )
                 ball.move_with_player(-player.getSpeed(), move);
             break;
         }
 
-        case 2: {
+        case move_right: {
             if( !ball.isLaunched() )
                 ball.move_with_player(player.getSpeed(), move);
             break;
         }
 
         default:
-        case 0: {
+        case stay: {
             if( !ball.isLaunched() )
-                ball.move_with_player(player.getSpeed(), 0);
+                ball.move_with_player(player.getSpeed(), stay);
             break;
         }
     }
 }
 
 void physics_scene::calculate(
-        const unsigned int key_bottom_move, const unsigned int key_bottom_action,
-        const unsigned int key_top_move, const unsigned int key_top_action,
-        const int who_lost_the_ball, const int who_leads_the_ball
+        const num_move key_bottom_move, const num_action key_bottom_action,
+        const num_move key_top_move, const num_action key_top_action,
+        const players who_lost_the_ball, const players who_leads_the_ball
 ) {
 
     dt = clock.getElapsedTime().asSeconds();
@@ -414,14 +484,14 @@ void physics_scene::calculate(
     who_broke_the_block = undef;
 
     switch (who_lost_the_ball) {
-        case 1: {
+        case bottom: {
             // первый параметр передает координаты игрока, потерявшего шарик
             // второй параметр - является ли положение верхним
             ball.restart(player_bottom.giveCoords(), false);
             break;
         }
 
-        case 2: {
+        case top: {
             ball.restart(player_top.giveCoords(), true);
             break;
         }
@@ -429,10 +499,10 @@ void physics_scene::calculate(
         default: break;
     }
 
-    analyseKeys(player_bottom, key_bottom_move, key_bottom_action);
-    analyseKeys(player_top, key_top_move, key_top_action);
+    analyseKeys(player_bottom, who_leads_the_ball, key_bottom_move, key_bottom_action);
+    analyseKeys(player_top, who_leads_the_ball, key_top_move, key_top_action);
 
-    if (who_leads_the_ball == 1) {
+    if (who_leads_the_ball == top) {
         moveBall(player_bottom, key_bottom_move);
     } else {
         moveBall(player_top, key_top_move);
@@ -477,10 +547,22 @@ const sf::Vector2f physics_scene::giveBallSpeed() const {
     return sf::Vector2f(coords.x * PTM, coords.y * PTM);
 }
 
-const int physics_scene::getBrokenBlock() {
+const int physics_scene::getBrokenBlock() const {
     return broken_block;
 }
 
-object_type physics_scene::getHitman() {
-    return who_broke_the_block;
+players physics_scene::getHitman() const {
+    switch (who_broke_the_block) {
+        case player_bottom_id: {
+            return bottom;
+        }
+
+        case player_top_id: {
+            return top;
+        }
+
+        default: {
+            return no;
+        }
+    }
 }

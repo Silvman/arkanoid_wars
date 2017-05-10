@@ -17,13 +17,15 @@ private:
 
 	unsigned my_number;
 	bool connection;
-	unsigned int key_move, key_action;
+
+	num_move key_move;
+    num_action key_action;
 
 	graphics_scene graphics;
 
 	sf::TcpSocket socket;//программный интерфейс для обеспечения обмена данными между процессами
-	sf::Packet INPUT;	//Для осуществления пакетной передачи дынных
-	sf::Packet OUTPUT;
+	sf::Packet input_packet;	//Для осуществления пакетной передачи дынных
+	sf::Packet output_packet;
 
 	data_from_server from_server;
 
@@ -33,9 +35,8 @@ public:
 	client(sf::RenderWindow& window);
 	void connect (sf::IpAddress ip) ;
 	void run(sf::RenderWindow& window);
-	void disconnect() ;
+	void disconnect();
 	~client() ;
-	friend sf::Packet& operator >> (sf::Packet& packet, data_from_server& to);
 };
 
 
