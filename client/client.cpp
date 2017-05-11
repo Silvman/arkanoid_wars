@@ -108,6 +108,7 @@ int client::run(sf::RenderWindow& window){
 						from_server.score_bottom,
 						from_server.score_top
 				);
+				audio.run(playerKicked,from_server.broken_block);
 				window.display();
 
 

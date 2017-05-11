@@ -7,7 +7,7 @@
 
 #include <SFML/Network.hpp>
 #include "graphics_scene.hpp"
-
+#include "sound.hpp"
 
 class client {
 private:
@@ -16,6 +16,7 @@ private:
 
 	unsigned my_number;
 	bool connection;
+	sound audio;
 
 	num_move key_move;
     num_action key_action;

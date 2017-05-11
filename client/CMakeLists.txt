@@ -3,11 +3,11 @@ project(aw_client)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES main.cpp graphics_scene.cpp menu.cpp client.cpp ../common.cpp)
+set(SOURCE_FILES main.cpp graphics_scene.cpp menu.cpp client.cpp ../common.cpp sound.cpp)
 add_executable(aw_client ${SOURCE_FILES})
 
 set(CMAKE_MODULE_PATH "../cmake_modules")
-find_package(SFML REQUIRED system window graphics network)
+find_package(SFML REQUIRED system window graphics network audio)
 find_package(Box2D REQUIRED)
 if (SFML_FOUND)
     include_directories(${SFML_INCLUDE_DIR})
