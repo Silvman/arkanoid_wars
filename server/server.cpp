@@ -83,7 +83,7 @@ void server::output() {
 			game_over = true;
             //std::cout << "Winner: " << serv_world->whoWin() << std::endl;
 		}
-
+        
         std::cout << "Working" << std::endl;
 
 		to_client.player_bottom_coords  = serv_world->givePlayerBottomCoords();
