@@ -10,7 +10,7 @@ client::client(sf::RenderWindow& window) :
 		key_move(stay),
 		key_action(nothing)
 {
-
+    // socket.setBlocking(false);
 }
 
 void client::connect(sf::IpAddress ip) {

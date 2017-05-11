@@ -30,6 +30,7 @@ sf::Packet& operator >> (sf::Packet& packet, data_from_server& to) {
     packet >> to.isPlayerKicked;
     packet >> to.score_bottom >> to.score_top >> to.lives_bottom >> to.lives_top;
 
+    // блок для чтения enum players
     int b;
     packet >> b;
 

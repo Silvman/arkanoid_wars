@@ -184,7 +184,10 @@ public:
     const sf::Vector2f givePlayerBottomCoords() const;
     const sf::Vector2f givePlayerTopCoords() const;
     const sf::Vector2f giveBallCoords() const;
+
     const sf::Vector2f giveBallSpeed() const;
+    // const sf::Vector2f givePlayerBottomSpeed() const;
+    // const sf::Vector2f givePlayerTopSpeed() const;
 
     const int getBrokenBlock() const;
     players getHitman() const;

@@ -253,14 +253,25 @@ void physics_scene::physic_player::stop() {
 }
 
 void physics_scene::physic_player::move(const num_move dest) {
+    float x_player = player->GetPosition().x;
+
     switch (dest) {
         case move_right: {
             player->SetLinearVelocity(player_speed);
+
+            if(x_player > (gc_window_size_x - 80) / PTM) {
+                stop();
+            }
+
             break;
         }
 
         case move_left: {
             player->SetLinearVelocity(-player_speed);
+
+            if(x_player < 70 / PTM) {
+                stop();
+            }
             break;
         }
 
@@ -366,41 +377,20 @@ physics_scene::physics_scene(const float window_size_x, const float window_size_
 {
     world.SetContactListener(&listener);
 
-    const unsigned cols = 8;
-    const unsigned rows = 8;
-
-    bool map[cols][rows] = {
-            {1, 0, 1, 0, 1, 0, 1, 0},
-            {1, 0, 1, 0, 1, 0, 1, 0},
-            {1, 0, 1, 0, 1, 0, 1, 0},
-            {1, 0, 1, 1, 1, 0, 1, 0},
-            {1, 0, 1, 0, 1, 0, 1, 0},
-            {1, 0, 1, 0, 1, 0, 1, 0},
-            {1, 0, 1, 0, 1, 0, 1, 1},
-            {1, 0, 1, 0, 1, 0, 1, 0}
-    };
-
-
-    const float height = 400 / rows;
-    const float width = 400 / cols;
-    const float space = 5;
-    const float start_x = 250;
-    const float start_y = 200;
-
     int passaway = 0;
 
-    for(int i = 0; i < rows; i++) {
-        for(int j = 0; j < cols; j++){
-            if (map[i][j]) {
+    for(int i = 0; i < map_rows; i++) {
+        for(int j = 0; j < map_cols; j++){
+            if (map_blocks[i][j]) {
                 blocks.push_back(
                         new physic_block(
                                 world,
-                                start_x + j * width + j * space,
-                                start_y + i * height + i * space,
-                                width,
-                                height,
+                                map_start_x + j * map_width + j * map_space,
+                                map_start_y + i * map_height + i * map_space,
+                                map_width,
+                                map_height,
                                 0.0f,
-                                (i * 8) + j - passaway
+                                (i * map_cols) + j - passaway
                         )
                 );
             } else {
@@ -514,6 +504,7 @@ void physics_scene::calculate(
         if (buf != -1) {
             broken_block = buf;
             who_broke_the_block = ball.getOwner();
+            break;
         }
     }
 
@@ -546,7 +537,18 @@ const sf::Vector2f physics_scene::giveBallSpeed() const {
     b2Vec2 coords = ball.giveSpeed();
     return sf::Vector2f(coords.x * PTM, coords.y * PTM);
 }
+/*
+const sf::Vector2f givePlayerBottomSpeed() const {
+    b2Vec2 coords = player_bottom.getSpeed();
+    return sf::Vector2f(coords.x * PTM, coords.y * PTM);
 
+}
+const sf::Vector2f givePlayerTopSpeed() const {
+    b2Vec2 coords = player_top.getSpeed();
+    return sf::Vector2f(coords.x * PTM, coords.y * PTM);
+
+}
+*/
 const int physics_scene::getBrokenBlock() const {
     return broken_block;
 }

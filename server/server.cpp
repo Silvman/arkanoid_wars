@@ -5,7 +5,10 @@
 #include "headers/server.hpp"
 
 // server
-server::server(const unsigned short port) : serv_world(1024,768) {
+server::server(const unsigned short port) : serv_world(1024, 768) {
+    // socket_1.setBlocking(false);
+    // socket_2.setBlocking(false);
+
 	listener.listen(port);
 	std::cout << "Server is listening to port " << port << ", waiting for connection 1. " << std::endl;
 

@@ -3,6 +3,7 @@
 //
 
 #include "headers/graphics_scene.hpp"
+#include "../common.hpp"
 
 graphics_scene::block_body::block_body(const float x_start, const float y_start,
 									   const float height, const float width,
@@ -83,35 +84,17 @@ graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
 	//blocks.push_back(block_body(550, 260, 120.0f, 40.0f, 0.0f));
 	// blocks.push_back(block_body(670, 260, 120.0f, 40.0f, 0.0f));
 
-	const unsigned cols = 8;
-	const unsigned rows = 8;
+	// сдвинуть на относительно сервера
 
-	bool map[cols][rows] = {
-			{1, 0, 1, 0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1, 0, 1, 0},
-			{1, 0, 1, 1, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1, 0, 1, 1},
-			{1, 0, 1, 0, 1, 0, 1, 0}
-	};
-
-	const float height = 400 / rows;
-	const float width = 400 / cols;
-	const float space = 5;
-	const float start_x = 260; // сдвинуть на относительно сервера
-	const float start_y = 200;
-
-	for(int i = 0; i < rows; i++) {
-		for(int j = 0; j < cols; j++){
-			if (map[i][j]) {
+	for(int i = 0; i < map_rows; i++) {
+		for(int j = 0; j < map_cols; j++){
+			if (map_blocks[i][j]) {
 				blocks.push_back(block_body(
-						start_x + j * width + j * space,
-						start_y + i * height + i * space,
-						width,
-						height,
-						0.0f
+						map_start_x + 10 + j * map_width + j * map_space,
+						map_start_y + i * map_height + i * map_space,
+						map_width,
+						map_height,
+						0.0f // а это угол
 				));
 			}
 		}
