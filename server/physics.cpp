@@ -6,7 +6,7 @@
 
 
 // const b2Vec2 ball_default_speed(0.0f, -9.0f);
-const b2Vec2 player_default_speed(15.0f, 0.0f);
+const b2Vec2 player_default_speed(20.0f, 0.0f);
 
 
 // blocksKickListener
@@ -377,6 +377,7 @@ physics_scene::physics_scene(const float window_size_x, const float window_size_
 {
     world.SetContactListener(&listener);
 
+    // нужно для правильного индексирования блоков, считает число ячеек с нулём
     int passaway = 0;
 
     for(int i = 0; i < map_rows; i++) {

@@ -35,6 +35,7 @@ public:
 	client(sf::RenderWindow& window);
 	void connect (sf::IpAddress ip) ;
 	int run(sf::RenderWindow& window);
+    void askReplay();
 	void disconnect();
 	~client() ;
 };

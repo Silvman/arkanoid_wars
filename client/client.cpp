@@ -119,7 +119,7 @@ int client::run(sf::RenderWindow& window){
 
 			sleep(sf::milliseconds(10));
 			return 3;
-		} else {
+    } else {
 			graphics.draw(
 					from_server.player_bottom_coords,
 					from_server.player_top_coords,
@@ -133,8 +133,15 @@ int client::run(sf::RenderWindow& window){
 			);
 
 			return graphics.draw_win(from_server.winner);
-		}
+	}
 
+}
+
+void client::askReplay() {
+    gameIsOver = 0;
+	graphics.reset_all_blocks();
+    output_packet << true;
+    socket.send(output_packet);
 }
 
 void client::disconnect() {

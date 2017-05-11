@@ -11,7 +11,7 @@
 
 class server {
 private:
-	logic_world serv_world;
+	logic_world* serv_world;
 
 	sf::TcpListener listener;
 	sf::TcpSocket socket_1; // программный интерфейс для обеспечения обмена данными между процессами
@@ -24,10 +24,15 @@ private:
 	data_from_client data;
 	data_from_server to_client;
 
+    bool game_over;
+
 public:
 	server(const unsigned short port);
+
 	~server();
 
+
+    void replay();
 	void input();
 	void output();
 };

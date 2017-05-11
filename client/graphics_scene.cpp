@@ -26,7 +26,12 @@ void graphics_scene::block_body::draw(sf::RenderWindow& window)
 
 void graphics_scene::block_body::kick()
 {
-	isKicked = true;
+    isKicked = true;
+}
+
+void graphics_scene::block_body::reset()
+{
+    isKicked = false;
 }
 
 graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
@@ -60,12 +65,14 @@ graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
 	heart.setTexture(texture_heart);
 	heart.setScale(0.6,0.6);
 
-	player_bottom.setPosition(window.getSize().x / 2, window.getSize().y - 20);
-	player_bottom.setFillColor(sf::Color::Blue);
-	player_bottom.setSize(sf::Vector2f(100, 10));
-	player_bottom.setOrigin(50, 5); // хардкод
+    player_img.loadFromFile("../../client/img/player.png");
+    player_img.setSmooth(true);
 
-	conect.setColor(sf::Color::Blue);
+	player_bottom.setPosition(window.getSize().x / 2, window.getSize().y - 20);
+	player_bottom.setTexture(player_img);
+	player_bottom.setOrigin(60, 60); // хардкод
+
+	conect.setColor(sf::Color::Yellow);
 	conect.setFont(font);
 	conect.setCharacterSize(50);
 	conect.setPosition(window.getSize().x/2 - 280 ,window.getSize().y/2 );
@@ -74,12 +81,13 @@ graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
 	score.setCharacterSize(30);
 
 	player_top.setPosition(window.getSize().x / 2, 35);
-	player_top.setSize(sf::Vector2f(100, 10));
-	player_top.setFillColor(sf::Color::Red);
-	player_top.setOrigin(50, 5); // хардкод
+	player_top.setTexture(player_img);
+	player_top.setOrigin(60, 50); // хардкод
 
+	ball_img.loadFromFile("../../client/img/ball.png");
+	
+	ball.setTexture(ball_img);
 	ball.setPosition(window.getSize().x / 2, window.getSize().y - 30);
-	ball.setRadius(10);
 
 	//blocks.push_back(block_body(550, 260, 120.0f, 40.0f, 0.0f));
 	// blocks.push_back(block_body(670, 260, 120.0f, 40.0f, 0.0f));
@@ -162,6 +170,12 @@ void graphics_scene::draw(const sf::Vector2f& player_bottom_coords, const sf::Ve
 	// Отрисовка
 }
 
+void graphics_scene::reset_all_blocks() {
+    for (auto it = blocks.begin(); it != blocks.end(); it++) {
+        it->reset();
+    }
+}
+
 void graphics_scene::draw_er_con() {
 	window.clear();
 
@@ -219,7 +233,7 @@ int graphics_scene::draw_win(players winner) {
 	if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
 		switch(selection) {
 			case Again: {
-				return 1;
+				return 4;
 			}
 			case Menu: {
 				return 1;

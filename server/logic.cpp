@@ -83,7 +83,7 @@ logic_world::logic_world(const float window_size_x, const float window_size_y):
 		player_bottom(window_size_x / 2.0f, window_size_y - 25.0f, 4),
 		player_top(window_size_x / 2.0f, window_size_y - 25.0f),
 		ball(window_size_x / 2.0f, window_size_y - 35.0f),
-		count_blocks(34),
+		count_blocks(120),
 		physics(window_size_x, window_size_y),
 		who_lost_the_ball(no),
 		who_leads_the_ball(bottom),

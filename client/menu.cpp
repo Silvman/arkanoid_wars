@@ -47,8 +47,10 @@ void menu::run(sf::IpAddress ip) {
 		}
 
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-			if (menuNum == 1)
+			if (menuNum == 1) {
 				isMenu = 2;
+				//CLIENT.askReplay();
+			}
 
 			if (menuNum == 2)
 				window.close();
@@ -67,5 +69,10 @@ void menu::run(sf::IpAddress ip) {
 
 	if (isMenu == 3) {
 		isMenu = CLIENT.run(window);
+	}
+
+	if (isMenu == 4) {
+		CLIENT.askReplay();
+		isMenu = 3;
 	}
 }
