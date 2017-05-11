@@ -21,7 +21,8 @@ private:
 	sf::RenderWindow& window;
 	sf::Font font;
 
-	sf::Texture player_img;
+	sf::Texture player_top_img;
+	sf::Texture player_bot_img;
 	sf::Sprite player_bottom;
 	sf::Sprite player_top;
 

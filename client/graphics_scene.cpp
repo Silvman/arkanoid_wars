@@ -65,11 +65,13 @@ graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
 	heart.setTexture(texture_heart);
 	heart.setScale(0.6,0.6);
 
-    player_img.loadFromFile("../../client/img/player.png");
-    player_img.setSmooth(true);
+	player_top_img.loadFromFile("../../client/img/player.png");
+	player_top_img.setSmooth(true);
+	player_bot_img.loadFromFile("../../client/img/player_bot.png");
+	player_bot_img.setSmooth(true);
 
 	player_bottom.setPosition(window.getSize().x / 2, window.getSize().y - 20);
-	player_bottom.setTexture(player_img);
+	player_bottom.setTexture(player_bot_img);
 	player_bottom.setOrigin(60, 60); // хардкод
 
 	conect.setColor(sf::Color::Yellow);
@@ -81,7 +83,7 @@ graphics_scene::graphics_scene(sf::RenderWindow& window) : window(window) {
 	score.setCharacterSize(30);
 
 	player_top.setPosition(window.getSize().x / 2, 35);
-	player_top.setTexture(player_img);
+	player_top.setTexture(player_top_img);
 	player_top.setOrigin(60, 50); // хардкод
 
 	ball_img.loadFromFile("../../client/img/ball.png");
