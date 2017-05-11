@@ -11,6 +11,10 @@ sound::sound()
 
 	buffer_hit_block.loadFromFile("../../client/img/block.wav");
 	hit_block.setBuffer(buffer_hit_block);
+
+	music.openFromFile("../../client/img/music.ogg");
+	music.setLoop(1);
+	music.setVolume(50);
 }
 
 
@@ -22,4 +26,10 @@ void sound::run(bool isPlayerKicked, int brokenBlock)
 	
 	if (brokenBlock != -1)
 		hit_block.play();
+}
+
+void sound::background()
+{
+	if (isMusic == 0)
+		music.play();
 }

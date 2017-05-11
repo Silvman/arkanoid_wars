@@ -18,6 +18,7 @@ private:
 	int menuNum;
 	int isMenu = 1;
 	client CLIENT;
+	sound audio;
 
 public:
 	menu(sf::RenderWindow& WINDOW);

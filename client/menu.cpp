@@ -26,6 +26,7 @@ CLIENT(WINDOW)
 }
 
 void menu::run(sf::IpAddress ip) {
+	audio.background();
 	if (isMenu == 1) {
 		end.setColor(sf::Color::Blue);
 		start.setColor(sf::Color::Blue);

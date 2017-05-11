@@ -15,7 +15,12 @@ private:
 
 	sf::SoundBuffer buffer_hit_block;
 	sf::Sound hit_block;
+
+	sf::Music music;
+	bool isMusic;
+
 public:
+	void background();
 	sound();
 	void run(bool isPlayerKicked, int brokenBlock);
 	~sound(){
