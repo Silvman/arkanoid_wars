@@ -5,9 +5,16 @@
 #ifndef ARKANOIDWARS_GRAPHICS_SCENE_HPP
 #define ARKANOIDWARS_GRAPHICS_SCENE_HPP
 
+
 #include <SFML/Graphics.hpp>
 #include <iostream>
+#include "../../common.hpp"
+// Первый игрок  - бот, 2 - топ, 0 никто
 
+enum button {
+	Again = 0,
+	Menu
+};
 
 class graphics_scene {
 private:
@@ -23,6 +30,15 @@ private:
 	sf::Sprite background;
 	sf::Texture texture_heart;
 	sf::Sprite heart;
+	button selection;
+	sf::Texture texture_panel;
+	sf::Sprite panel;
+	sf::Texture texture_again;
+	sf::Sprite again;
+	sf::Texture texture_menu;
+	sf::Sprite menu;
+	sf::Text win;
+
 
 	class block_body {
 	private:
@@ -46,6 +62,7 @@ public:
 			  int top_lives = 3, int bot_score = 0, int top_score = 0);
 	void draw_er_con() ;
 	void draw_wait_con();
+	int draw_win(players winner);
 	~graphics_scene() {}
 };
 

@@ -72,7 +72,6 @@ void server::output() {
 		to_client.lives_top             = serv_world.giveLivesTop();
         to_client.winner                = serv_world.whoWin();
 
-		connection = 1;
 		to_client.connection = 1;
 
 		output_packet << to_client;
@@ -80,15 +79,17 @@ void server::output() {
 		socket_1.send(output_packet);
 		socket_2.send(output_packet);
 		output_packet.clear();
-	} else {
-		to_client.connection = connection;
-
+	} else
 		output_packet << to_client;
-	}
+
 
 	if(data.bot_connect == 1 && data.top_connect == 0) {
 		socket_1.send(output_packet);
 		output_packet.clear();
+	}
+
+	if(data.bot_connect == 0 && data.top_connect == 0) {
+		//удаление физической игры и игры в целом
 	}
 
 	if(data.bot_connect == 0 && data.top_connect == 1) {
@@ -96,7 +97,7 @@ void server::output() {
 		output_packet.clear();
 	}
 
-	connection = 0;
+	to_client.connection = 0;
 
 }
 

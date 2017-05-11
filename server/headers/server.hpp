@@ -21,8 +21,6 @@ private:
 	sf::Packet input_packet;
 	sf::Packet output_packet;
 
-	bool connection;
-
 	data_from_client data;
 	data_from_server to_client;
 

@@ -7,7 +7,6 @@
 
 #include <SFML/Network.hpp>
 #include "graphics_scene.hpp"
-#include "../../common.hpp"
 
 
 class client {
@@ -30,11 +29,12 @@ private:
 	data_from_server from_server;
 
 	bool playerKicked;
+	bool gameIsOver = 0;
 
 public:
 	client(sf::RenderWindow& window);
 	void connect (sf::IpAddress ip) ;
-	void run(sf::RenderWindow& window);
+	int run(sf::RenderWindow& window);
 	void disconnect();
 	~client() ;
 };

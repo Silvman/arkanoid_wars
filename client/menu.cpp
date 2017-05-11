@@ -66,6 +66,6 @@ void menu::run(sf::IpAddress ip) {
 	}
 
 	if (isMenu == 3) {
-		CLIENT.run(window);
+		isMenu = CLIENT.run(window);
 	}
 }
