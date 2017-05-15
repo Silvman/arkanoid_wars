@@ -73,6 +73,7 @@ private:
 	//std::vector<logic_block> blocks;
 
     int count_blocks;
+    int blocks_kicked;
 
 	int broken_block;
 	// Флаг, содержащий информацию о том, кто потерял шарик, и (== 0) если шарик не потерян

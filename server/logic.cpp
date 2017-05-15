@@ -83,7 +83,8 @@ logic_world::logic_world(const float window_size_x, const float window_size_y):
 		player_bottom(window_size_x / 2.0f, window_size_y - 25.0f, 4),
 		player_top(window_size_x / 2.0f, window_size_y - 25.0f),
 		ball(window_size_x / 2.0f, window_size_y - 35.0f),
-		count_blocks(120),
+		count_blocks(96),
+		blocks_kicked(0),
 		physics(window_size_x, window_size_y),
 		who_lost_the_ball(no),
 		who_leads_the_ball(bottom),
@@ -111,14 +112,14 @@ logic_world::update(const num_move key_bottom_move, num_action key_bottom_action
 
 	// жизней меньше нуля
 	if (player_bottom.getLives() < 0) {
-		winner = top;
-		return;
+		player_bottom.setScore(player_bottom.getScore() - 10);
+		player_bottom.setLives(player_bottom.getLives() + 1);
 	}
 
 
 	if (player_top.getLives() < 0) {
-		winner = bottom;
-		return;
+		player_top.setScore(player_top.getScore() - 10);
+		player_top.setLives(player_top.getLives() + 1);
 	}
 
 	/*
@@ -137,13 +138,13 @@ logic_world::update(const num_move key_bottom_move, num_action key_bottom_action
 	switch (physics.getHitman()) {
 		case bottom: {
 			++player_bottom;
-			//--count_blocks;
+			++blocks_kicked;
 			break;
 		}
 
 		case top: {
 			++player_top;
-			//--count_blocks;
+			++blocks_kicked;
 			break;
 		}
 
@@ -151,11 +152,11 @@ logic_world::update(const num_move key_bottom_move, num_action key_bottom_action
 			break;
 	}
 
-	if (player_bottom.getScore() > count_blocks / 2) {
+	if (player_bottom.getScore() - player_top.getScore() > count_blocks - blocks_kicked) {
 		winner = bottom;
 	}
 
-	if (player_top.getScore() > count_blocks / 2) {
+	if (player_top.getScore() - player_bottom.getScore() > count_blocks - blocks_kicked) {
 		winner = top;
 	}
 
