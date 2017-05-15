@@ -4,3 +4,5 @@ project(ArkanoidWars)
 
 add_subdirectory(client)
 add_subdirectory(server)
+
+#install()

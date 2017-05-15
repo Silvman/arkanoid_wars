@@ -8,9 +8,11 @@ sound::sound()
 {
 	buffer_hit_player.loadFromFile("../../client/img/hit.wav");
 	hit_player.setBuffer(buffer_hit_player);
+    hit_player.setVolume(25);
 
 	buffer_hit_block.loadFromFile("../../client/img/block.wav");
 	hit_block.setBuffer(buffer_hit_block);
+    hit_block.setVolume(25);
 
 	music.openFromFile("../../client/img/music.ogg");
 	music.setLoop(1);

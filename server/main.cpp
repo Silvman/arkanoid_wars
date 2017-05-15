@@ -45,26 +45,24 @@ int main() {
 				return 0;
 				*/
 		//Сервер с логическим миром и физикой пока только для одного игрока
-		server serv(2000);
+    server serv(2000);
 
 		// Создаем главное окно приложения сервер
-		sf::RenderWindow window(sf::VideoMode(150,150), "Server!");
-		window.setFramerateLimit(50);
-		window.setVerticalSyncEnabled(true);
-
-		while (window.isOpen()) {
-
-			sf::Event event;
-			while (window.pollEvent(event)) {
-				// Кроме обычного способа наше окно будет закрываться по нажатию на Escape
-				if (event.type == sf::Event::Closed ||
-					(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape))
-					window.close();
-			}
-
-			serv.input();
-			serv.output();
+	sf::RenderWindow window(sf::VideoMode(150,150), "Server!");
+	window.setFramerateLimit(50);
+	window.setVerticalSyncEnabled(true);
+	while (window.isOpen()) {
+		sf::Event event;
+		while (window.pollEvent(event)) {
+			// Кроме обычного способа наше окно будет закрываться по нажатию на Escape
+			if (event.type == sf::Event::Closed ||
+				(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape))
+				window.close();
 		}
+
+		serv.input();
+		serv.output();
+    }
 
 	return 0;
 }

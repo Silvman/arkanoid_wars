@@ -93,13 +93,15 @@ b2Body* physics_scene::physic_ball::createBall(const float play_pos_x, const flo
     b2FixtureDef ball_fixture_def;
     ball_fixture_def.shape = &ball_shape;
     ball_fixture_def.density = 10.1f;
-    ball_fixture_def.restitution = 1.05f;
+    ball_fixture_def.restitution = 1.01f;
     ball_fixture_def.friction = 0.0f;
 
     // из-за особенностей хранения userData
     new_ball->CreateFixture(&ball_fixture_def);
 
     new_ball->SetUserData(this);
+
+    new_ball->SetBullet(true);
 
     return new_ball;
 };
